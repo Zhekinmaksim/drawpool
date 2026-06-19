@@ -1,0 +1,12 @@
+.DS_Store
+drawpool.zip
+
+node_modules/
+contracts/node_modules/
+cache/
+artifacts/
+contracts/cache/
+contracts/artifacts/
+
+.env
+contracts/.env

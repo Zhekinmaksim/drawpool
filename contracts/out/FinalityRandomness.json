@@ -1,0 +1,186 @@
+{
+  "contractName": "FinalityRandomness",
+  "sourceName": "src/FinalityRandomness.sol",
+  "abi": [
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "consumer",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "key",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "newCommitBlock",
+          "type": "uint256"
+        }
+      ],
+      "name": "Recommitted",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "consumer",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "key",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "commitBlock",
+          "type": "uint256"
+        }
+      ],
+      "name": "Requested",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "consumer",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "key",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "random",
+          "type": "uint256"
+        }
+      ],
+      "name": "Revealed",
+      "type": "event"
+    },
+    {
+      "inputs": [],
+      "name": "COMMIT_DELAY",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "name": "commitBlockOf",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "consumer",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "key",
+          "type": "uint256"
+        }
+      ],
+      "name": "isReady",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "key",
+          "type": "uint256"
+        }
+      ],
+      "name": "request",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "availableAtBlock",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "key",
+          "type": "uint256"
+        }
+      ],
+      "name": "reveal",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "random",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bool",
+          "name": "ready",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x6080604052348015600e575f5ffd5b506103d88061001c5f395ff3fe608060405234801561000f575f5ffd5b5060043610610055575f3560e01c806319f7d7f21461005957806350857fb2146100965780639628f1191461009e578063c2ca0ac5146100c1578063d845a4b3146100e9575b5f5ffd5b610083610067366004610337565b600160209081525f928352604080842090915290825290205481565b6040519081526020015b60405180910390f35b610083600481565b6100b16100ac366004610337565b6100fc565b604051901515815260200161008d565b6100d46100cf36600461036c565b610146565b6040805192835290151560208301520161008d565b6100836100f736600461036c565b6102d4565b6001600160a01b0382165f90815260016020908152604080832084845290915281205480158061012c5750804311155b1561013a575f915050610140565b40151590505b92915050565b335f90815260016020908152604080832084845290915281205481908082036101a55760405162461bcd60e51b815260206004820152600d60248201526c1b9bc818dbdb5b5a5d1b595b9d609a1b604482015260640160405180910390fd5b8043116101b757505f93849350915050565b804080610229575f6101ca600443610383565b335f8181526001602090815260408083208b8452825291829020849055905183815292935088927fc7895a39e942637963bbc9524c22ea2c7ae4808c0920d6d7ec6ac4315c368853910160405180910390a3505f958695509350505050565b5f5460408051602081018490529081019190915233606090811b6bffffffffffffffffffffffff1916908201526074810186905244609482015260b40160408051808303601f1901815282825280516020918201205f81815533808252600184528482208b8352845293812055808452965087927fc100f01fdaa206bf36f50fd3c33f747cd602df3abaed791458e1d50d6084e125910160405180910390a350919360019350915050565b5f6102e0600443610383565b335f818152600160209081526040808320878452825291829020849055905183815292935084927f2ea88857aaf5a09da335056adf5216caea1b3f94664a7f7344eb0468fa6b3262910160405180910390a3919050565b5f5f60408385031215610348575f5ffd5b82356001600160a01b038116811461035e575f5ffd5b946020939093013593505050565b5f6020828403121561037c575f5ffd5b5035919050565b8082018082111561014057634e487b7160e01b5f52601160045260245ffdfea26469706673582212202c9bd1bfe5f15c726d96da3138a457082b38b3e8d323bf23dc5400dafb9abab264736f6c634300081e0033"
+}

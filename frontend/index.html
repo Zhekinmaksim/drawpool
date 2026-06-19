@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DrawPool — no-loss prize pool on OPN Chain</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.2/ethers.umd.min.js"></script>
+</head>
+<body data-intensity="calm" data-motion="on">
+<canvas id="confetti"></canvas>
+<div id="tweaks-root"></div>
+
+<div class="wrap">
+  <nav data-screen-label="DrawPool home">
+    <div class="logo">
+      <svg width="34" height="34" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="DrawPool">
+        <g transform="translate(32,33)">
+          <path d="M0 -22 L-15 6 A15 16 0 0 0 0 17 Z" fill="#5B34D6"></path>
+          <path d="M0 -22 L15 6 A15 16 0 0 1 0 17 Z" fill="#7C5CFF"></path>
+          <path d="M0 -22 L-6 4 L0 17 L6 4 Z" fill="#A78BFA"></path>
+          <path d="M0 -22 L-6 4 L6 4 Z" fill="#C9B6FF"></path>
+          <path d="M0 -22 L6 4 L0 4 Z" fill="#E9B949"></path>
+        </g>
+      </svg>
+      <span class="name">Draw<span class="p">Pool</span><span id="demoFlag" class="demo-flag">demo</span></span>
+    </div>
+    <div class="navright">
+      <span class="chip" id="chip"><span class="dot"></span> OPN Testnet · 984</span>
+      <button class="btn" id="connect">Connect Wallet</button>
+    </div>
+  </nav>
+
+  <!-- jackpot board -->
+  <section class="board">
+    <div class="orbcell">
+      <div class="orb">
+        <div class="aura"></div>
+        <svg class="gemsvg" viewBox="0 0 200 200" aria-hidden="true">
+          <defs>
+            <radialGradient id="gemSheen" cx="42%" cy="36%" r="72%">
+              <stop offset="0%" stop-color="#ffffff" stop-opacity=".35"></stop>
+              <stop offset="45%" stop-color="#ffffff" stop-opacity="0"></stop>
+            </radialGradient>
+          </defs>
+          <g transform="translate(100,104) scale(3.7)">
+            <path d="M0 -22 L-15 6 A15 16 0 0 0 0 17 Z" fill="#5B34D6"></path>
+            <path d="M0 -22 L15 6 A15 16 0 0 1 0 17 Z" fill="#7C5CFF"></path>
+            <path d="M0 -22 L-6 4 L0 17 L6 4 Z" fill="#A78BFA"></path>
+            <path d="M0 -22 L-6 4 L6 4 Z" fill="#C9B6FF"></path>
+            <path d="M0 -22 L6 4 L0 4 Z" fill="#E9B949"></path>
+            <path d="M0 -22 L15 6 A15 16 0 0 1 -15 6 Z" fill="url(#gemSheen)"></path>
+            <path d="M0 -22 L15 6 A15 16 0 0 1 -15 6 Z" fill="none" stroke="#C9B6FF" stroke-width=".5" opacity=".5"></path>
+          </g>
+        </svg>
+        <svg class="ring" viewBox="0 0 258 258">
+          <circle cx="129" cy="129" r="120" fill="none" stroke="var(--line)" stroke-width="4"></circle>
+          <circle id="cdRing" cx="129" cy="129" r="120" fill="none" stroke="var(--accent)" stroke-width="4"
+            stroke-linecap="butt" stroke-dasharray="754" stroke-dashoffset="240"></circle>
+        </svg>
+        <div class="core">
+          <div>
+            <div class="plabel">Current jackpot</div>
+            <div class="num tnum"><span id="prize">0</span></div>
+            <div class="cur">tUSDC</div>
+          </div>
+        </div>
+      </div>
+      <div class="drip" id="drip" style="display:none">
+        <span class="arrow">▲</span> yield flowing in <b id="dripRate">+0.0042</b> tUSDC/s
+      </div>
+      <div class="clk" id="clk">
+        <div class="timer" id="cdT">--:--:--</div>
+        <div class="l">until next draw</div>
+      </div>
+    </div>
+    <div class="info">
+      <div class="row1">
+        <span class="badge">No-loss</span>
+        <span class="lbl">winner takes the entire pool's yield</span>
+      </div>
+      <div class="tagline">Deposit stablecoins, keep <b>every cent</b> of your principal. One depositor takes the whole pool's yield each draw — your odds scale with your balance.</div>
+      <div class="cta">
+        <button class="btn gold" id="heroDeposit">Deposit</button>
+        <button class="btn ghost" id="heroFaucet">Get test tUSDC</button>
+      </div>
+      <!-- compact provably-fair strip -->
+      <div class="fair" id="fair" style="display:none">
+        <div class="fi">
+          <div class="ft"><span class="ic"></span>Instant finality</div>
+          <div class="fd">Tendermint BFT — the committed block is final the instant it's produced.</div>
+        </div>
+        <div class="fi">
+          <div class="ft"><span class="ic"></span>No reorgs</div>
+          <div class="fd">Its hash can't be rewritten after the fact, so the draw can't be re-rolled.</div>
+        </div>
+        <div class="fi">
+          <div class="ft"><span class="ic"></span>Future-block entropy</div>
+          <div class="fd">Randomness derives from a block nobody can predict at commit time. <a id="fairLink" href="https://testnet.opnscan.io" target="_blank">Verify →</a></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- stat strip -->
+  <section class="strip">
+    <div><div class="lbl">Pool size</div><div class="v violet" id="mTotal">—</div></div>
+    <div><div class="lbl">Players</div><div class="v" id="mPart">—</div></div>
+    <div><div class="lbl">Prizes paid</div><div class="v gold" id="mPaid">—</div></div>
+    <div><div class="lbl">Draws settled</div><div class="v" id="mDraws">—</div></div>
+  </section>
+
+  <!-- position + deposit -->
+  <div class="cols">
+    <div class="card">
+      <h2>Your position &amp; odds</h2>
+      <div class="note">Win chance is your share of the pool — principal is always withdrawable 1:1.</div>
+      <div class="pos">
+        <div class="donut">
+          <svg id="donutSvg" viewBox="0 0 152 152" width="152" height="152"></svg>
+          <div class="center">
+            <div>
+              <div class="pct" id="donutPct">0%</div>
+              <div class="ct">your odds</div>
+            </div>
+          </div>
+        </div>
+        <div class="legend" id="legend"></div>
+      </div>
+      <div class="posfoot">
+        <div class="pf"><span class="k">Your deposit</span><span class="vv" id="uBal">— tUSDC</span></div>
+        <div class="pf"><span class="k">Win chance</span><span class="vv gold" id="uOdds">—</span></div>
+        <div class="pf"><span class="k">Wallet</span><span class="vv" id="uWallet">— tUSDC</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Deposit / Withdraw</h2>
+      <div class="note">Approve once, then deposit. The more you pool, the better your odds — and you can only ever win.</div>
+      <div class="ifield">
+        <input id="amt" type="text" inputmode="decimal" placeholder="0.00" />
+        <span class="suffix">tUSDC</span>
+        <button class="max" id="maxBtn">MAX</button>
+      </div>
+      <div class="preset">
+        <button data-v="100">100</button>
+        <button data-v="500">500</button>
+        <button data-v="1000">1,000</button>
+        <button data-v="5000">5,000</button>
+      </div>
+      <div class="act2">
+        <button class="btn" id="depositBtn">Deposit</button>
+        <button class="btn ghost" id="withdrawBtn">Withdraw</button>
+      </div>
+      <div class="faucet">No funds yet? <a id="faucetBtn">Claim 1,000 tUSDC from the faucet</a></div>
+    </div>
+  </div>
+
+  <!-- draw machine + slot reel -->
+  <section class="machine">
+    <div class="mhead">
+      <span class="ttl">Draw machine — anyone can spin it, nobody can predict it</span>
+      <span class="run">
+        <button class="btn" id="startBtn">Start draw</button>
+        <button class="btn gold" id="awardBtn">Award prize</button>
+      </span>
+    </div>
+    <div class="msteps">
+      <div class="ms" id="st1"><div class="idx">01 / COMMIT</div><div class="st">Lock &amp; commit</div>
+        <div class="sd">The pool locks and commits to a future OPN block. Nobody can react to the outcome.</div></div>
+      <div class="ms" id="st2"><div class="idx">02 / FINALIZE</div><div class="st">Block finalizes</div>
+        <div class="sd">A few ~1s blocks later it's final forever — no reorgs on OPN, so the hash can't be rigged.</div></div>
+      <div class="ms" id="st3"><div class="idx">03 / AWARD</div><div class="st">Winner drawn</div>
+        <div class="sd">Yield is harvested, a balance-weighted winner is selected, and the prize compounds in.</div></div>
+    </div>
+
+    <div class="reel-wrap">
+      <div class="reel" id="reel">
+        <div class="mask-top"></div>
+        <div class="mask-bot"></div>
+        <div class="winline" id="winline"></div>
+        <div class="strip-inner" id="reelInner"></div>
+        <div class="idle" id="reelIdle">Press <b style="color:var(--violet-br)">Start draw</b> to commit to a block, then <b style="color:var(--gold-br)">Award prize</b> to spin the weighted winner.</div>
+      </div>
+      <div class="commit">
+        <div class="crow"><span class="ck">Committed block</span><span class="cv" id="cBlock">—</span></div>
+        <div class="crow"><span class="ck">Block hash (entropy source)</span><span class="cv hash" id="cHash">—</span></div>
+        <div class="status" id="cStatus"><span class="sd"></span><span id="cStatusT">Idle — pool open</span></div>
+      </div>
+    </div>
+    <div class="mhint" id="runHint">Draws are permissionless — any player can run one when the timer hits zero.</div>
+    <div class="whoruns">
+      <span class="wlabel">Who runs draws?</span>
+      <span class="wtext">Permissionless — <b>any player</b> can trigger a draw once the timer hits zero, or a <b>keeper bot</b> fires it automatically. The contract picks the winner; nobody can rig or skip it.</span>
+    </div>
+  </section>
+
+  <!-- winners -->
+  <section class="winners">
+    <div class="wh"><span class="lbl">Recent winners</span><a id="explorerLink" target="_blank" class="lbl" style="color:var(--violet-br)">Explorer →</a></div>
+    <table>
+      <thead><tr><th>Draw</th><th>Winner</th><th class="r">Prize</th><th class="r">Entropy</th><th class="r">Date</th></tr></thead>
+      <tbody id="wlist"></tbody>
+    </table>
+  </section>
+
+  <footer>
+    <span>DRAWPOOL · SEASON 1 — DEFI &amp; OPEN FINANCE · IOPN BUILDERS</span>
+    <span id="addrLine">CONNECT A WALLET TO PLAY ON OPN TESTNET</span>
+  </footer>
+</div>
+
+<div id="toast"></div>
+
+<!-- Live-mode config: generated by deploy.js. null → demo mode. -->
+<script src="config.js?v=1"></script>
+<script src="abi.js?v=1"></script>
+<script src="app.js?v=2"></script>
+
+<!-- Tweaks (React powers only the panel overlay) -->
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js"></script>
+<script type="text/babel" data-presets="react" src="tweaks-panel.jsx?v=1"></script>
+<script type="text/babel" data-presets="react" src="panel.jsx?v=1"></script>
+</body>
+</html>

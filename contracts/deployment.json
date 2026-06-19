@@ -1,0 +1,14 @@
+{
+  "network": "opn-testnet",
+  "chainId": 984,
+  "rpc": "https://testnet-rpc.iopn.tech",
+  "explorer": "https://testnet.opnscan.io",
+  "drawInterval": 86400,
+  "deployedAt": "2026-06-19T16:17:57.976Z",
+  "contracts": {
+    "MockUSDC": "0x657B76E29a81F22C66155acCb1fAc7F0B15c8401",
+    "SponsoredYieldSource": "0xFC96922990e7FC152A398029cee8f6F162532441",
+    "FinalityRandomness": "0x649636f3eE9F74dA7AE276ea7aa28c354Db0cEba",
+    "DrawPool": "0x70FE611Eded4e930f361e298C1B222E12088c573"
+  }
+}

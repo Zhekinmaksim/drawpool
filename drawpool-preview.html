@@ -1,0 +1,3358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DrawPool — no-loss prize pool on OPN Chain</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+/* ============================================================
+   DrawPool — redesigned UI
+   Palette: violet = protocol, gold = jackpot/win only.
+   Fonts: Archivo (UI) + JetBrains Mono (numbers/labels).
+   Intensity is driven by [data-intensity] on <html>.
+   ============================================================ */
+:root{
+  --bg:#08080c; --bg-2:#0b0b11; --surface:#0f0f16; --surface-2:#14141d; --surface-3:#191923;
+  --line:rgba(255,255,255,.07); --line-2:rgba(255,255,255,.13); --line-3:rgba(255,255,255,.20);
+  --violet:#7c5cff; --violet-br:#a78bfa; --violet-deep:#5b34d6; --violet-soft:#c9b6ff;
+  --violet-dim:rgba(124,92,255,.12); --violet-dim-2:rgba(124,92,255,.20);
+  --gold:#e9b949; --gold-br:#f5cf6a; --gold-deep:#b88a1f;
+  --green:#46d369; --red:#ff5d5d; --amber:#ff9d3d;
+  --text:#ececf2; --text-2:#c3c3cf; --dim:#83838f; --dim-2:#56565f;
+  --sans:'Archivo',system-ui,sans-serif; --mono:'JetBrains Mono',ui-monospace,monospace;
+  --accent:var(--violet); --accent-br:var(--violet-br);
+  /* intensity-controlled */
+  --aura-op:.55; --aura-scale:1; --pulse-dur:3.4s; --grid-op:1; --gem-dur:9s;
+}
+[data-intensity="calm"]{ --aura-op:.30; --aura-scale:.92; --pulse-dur:5s; --grid-op:.6; --gem-dur:13s; }
+[data-intensity="hype"]{ --aura-op:.95; --aura-scale:1.12; --pulse-dur:1.9s; --grid-op:1.3; --gem-dur:5s; }
+[data-motion="off"] *{animation:none!important;transition:none!important}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.5;
+  -webkit-font-smoothing:antialiased;overflow-x:hidden}
+body{position:relative;min-height:100vh}
+/* layered background: grid + violet bloom + gold ember near jackpot */
+body::before{content:"";position:fixed;inset:0;z-index:-2;pointer-events:none;opacity:var(--grid-op);
+  background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
+  background-size:60px 60px;background-position:center top;
+  -webkit-mask-image:radial-gradient(120% 90% at 50% 0%,#000 35%,transparent 90%);
+          mask-image:radial-gradient(120% 90% at 50% 0%,#000 35%,transparent 90%)}
+body::after{content:"";position:fixed;inset:0;z-index:-3;pointer-events:none;
+  background:
+    radial-gradient(58% 42% at 28% -6%,rgba(124,92,255,.20),transparent 70%),
+    radial-gradient(40% 32% at 78% 4%,rgba(233,185,73,.07),transparent 70%)}
+
+.wrap{max-width:1120px;margin:0 auto;padding:0 22px 90px}
+a{color:var(--violet-br);text-decoration:none}
+.mono{font-family:var(--mono)} .tnum{font-variant-numeric:tabular-nums}
+.lbl{font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim)}
+
+/* ---------- top bar ---------- */
+nav{display:flex;justify-content:space-between;align-items:center;height:68px;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:30;
+  background:linear-gradient(var(--bg),rgba(8,8,12,.86));backdrop-filter:blur(8px)}
+.logo{display:flex;align-items:center;gap:11px}
+.logo svg{display:block}
+.logo .name{font-weight:700;font-size:19px;letter-spacing:-.5px}
+.logo .name .p{color:var(--violet-br)}
+.demo-flag{font-family:var(--mono);font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--gold);border:1px solid rgba(233,185,73,.35);padding:2px 6px;margin-left:9px;vertical-align:middle}
+.navright{display:flex;align-items:center;gap:12px}
+.chip{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11px;letter-spacing:.04em;
+  color:var(--dim);border:1px solid var(--line);padding:8px 12px;border-radius:3px}
+.chip .dot{width:6px;height:6px;background:var(--green);border-radius:50%;animation:pulse 2.4s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(70,211,105,.45)}70%{box-shadow:0 0 0 7px rgba(70,211,105,0)}100%{box-shadow:0 0 0 0 rgba(70,211,105,0)}}
+
+.btn{font-family:var(--sans);font-weight:600;font-size:13px;border:none;cursor:pointer;border-radius:4px;
+  padding:11px 18px;color:#fff;background:var(--violet);transition:background .15s,transform .08s,opacity .15s,box-shadow .2s;
+  display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.btn:hover{background:var(--violet-deep)} .btn:active{transform:translateY(1px)}
+.btn.gold{color:#0a0a0e;background:var(--gold)} .btn.gold:hover{background:var(--gold-br);box-shadow:0 0 24px rgba(233,185,73,.28)}
+.btn.ghost{background:transparent;color:var(--text);border:1px solid var(--line-2)}
+.btn.ghost:hover{background:var(--surface-2);border-color:var(--violet)}
+.btn:disabled{opacity:.32;cursor:not-allowed;box-shadow:none}
+
+/* ---------- jackpot board ---------- */
+.board{display:grid;grid-template-columns:.92fr 1.08fr;border:1px solid var(--line-2);margin-top:24px;background:var(--surface);
+  border-radius:6px;overflow:hidden}
+.orbcell{padding:34px 26px 26px;border-right:1px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;
+  position:relative;overflow:hidden;background:radial-gradient(80% 60% at 50% 30%,rgba(124,92,255,.05),transparent 72%)}
+.orbcell::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:.45;
+  background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(124,92,255,.022) 4px)}
+
+.orb{position:relative;width:268px;height:268px;display:grid;place-items:center}
+/* breathing aura behind the gem — the "gambling pulse", tuned by intensity */
+.orb .aura{position:absolute;width:100%;height:100%;border-radius:50%;z-index:0;
+  background:radial-gradient(circle at 50% 48%,var(--accent) 0%,transparent 62%);
+  opacity:calc(var(--aura-op) * .42);filter:blur(14px);
+  animation:breathe var(--pulse-dur) ease-in-out infinite}
+@keyframes breathe{0%,100%{transform:scale(calc(var(--aura-scale) * .9));opacity:calc(var(--aura-op)*.30)}
+  50%{transform:scale(var(--aura-scale));opacity:calc(var(--aura-op)*.5)}}
+.orb svg.gemsvg{position:absolute;inset:24px;width:220px;height:220px;z-index:1;
+  filter:drop-shadow(0 0 calc(16px * var(--aura-op)) rgba(124,92,255,.5));
+  animation:gemsway var(--gem-dur) ease-in-out infinite}
+@keyframes gemsway{0%,100%{transform:rotate(-7deg) scale(.97)}50%{transform:rotate(7deg) scale(1.02)}}
+.orb .ring{position:absolute;inset:0;transform:rotate(-90deg);z-index:3}
+.orb .core{position:absolute;inset:0;display:grid;place-items:center;text-align:center;z-index:2;pointer-events:none}
+.orb .core>div{background:radial-gradient(circle,rgba(8,8,12,.86) 36%,rgba(8,8,12,.42) 60%,transparent 76%);
+  padding:38px 34px;border-radius:50%}
+.orb .plabel{font-family:var(--mono);font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--violet-br)}
+.orb .num{font-family:var(--mono);font-weight:700;font-size:40px;line-height:1;letter-spacing:-1.5px;color:var(--gold);
+  margin:9px 0 4px;font-variant-numeric:tabular-nums;text-shadow:0 0 calc(22px * var(--aura-op)) rgba(233,185,73,.4)}
+.orb .cur{font-family:var(--mono);font-size:11px;color:var(--dim)}
+
+/* live yield drip readout */
+.drip{display:flex;align-items:center;gap:7px;margin-top:16px;font-family:var(--mono);font-size:11px;color:var(--dim)}
+.drip .arrow{color:var(--green)} .drip b{color:var(--green);font-weight:500}
+
+.clk{margin-top:14px;text-align:center}
+.clk .timer{font-family:var(--mono);font-weight:700;font-size:25px;letter-spacing:1px;color:var(--text);font-variant-numeric:tabular-nums}
+.clk .l{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin-top:3px}
+.clk.soon .timer{color:var(--amber)} .clk.ready .timer{color:var(--green)}
+
+/* right info column */
+.info{padding:30px 34px;display:flex;flex-direction:column;justify-content:center}
+.info .row1{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.badge{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--violet-br);
+  border:1px solid rgba(124,92,255,.4);padding:4px 9px;border-radius:3px}
+.info .row1 .lbl{margin:0}
+.info .tagline{margin:18px 0 22px;font-size:17px;line-height:1.55;color:var(--text);max-width:44ch}
+.info .tagline b{color:var(--gold-br);font-weight:600}
+.info .cta{display:flex;gap:10px}
+.info .cta .btn{min-width:132px}
+
+/* provably-fair compact strip */
+.fair{display:flex;gap:20px;margin-top:24px;padding-top:20px;border-top:1px solid var(--line)}
+.fair .fi{display:flex;flex-direction:column;gap:5px;flex:1}
+.fair .fi .ft{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11px;color:var(--text-2);letter-spacing:.02em}
+.fair .fi .ft .ic{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent)}
+.fair .fi .fd{font-size:11px;color:var(--dim);line-height:1.45}
+.fair .fi a{font-family:var(--mono);font-size:10.5px}
+
+/* ---------- stat strip ---------- */
+.strip{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line-2);border-top:none;border-radius:0 0 6px 6px;overflow:hidden}
+.strip>div{padding:17px 20px;border-right:1px solid var(--line)}
+.strip>div:last-child{border-right:none}
+.strip .v{font-family:var(--mono);font-weight:500;font-size:22px;margin-top:9px;font-variant-numeric:tabular-nums}
+.strip .v.violet{color:var(--violet-br)} .strip .v.gold{color:var(--gold)} .strip .v.green{color:var(--green)}
+
+/* ---------- two-col cards ---------- */
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+.card{border:1px solid var(--line-2);background:var(--surface);padding:24px;border-radius:6px}
+.card h2{font-size:14px;font-weight:600;letter-spacing:.01em;display:flex;align-items:center;gap:9px}
+.card h2::before{content:"";width:3px;height:13px;background:var(--accent);border-radius:2px}
+.card .note{color:var(--dim);font-size:12.5px;margin:8px 0 18px}
+
+/* position card: donut + legend */
+.pos{display:grid;grid-template-columns:152px 1fr;gap:22px;align-items:center;margin-top:4px}
+.donut{position:relative;width:152px;height:152px}
+.donut svg{transform:rotate(-90deg)}
+.donut .seg{transition:stroke-dashoffset .6s cubic-bezier(.22,1,.36,1),stroke-width .2s}
+.donut .center{position:absolute;inset:0;display:grid;place-items:center;text-align:center}
+.donut .center .pct{font-family:var(--mono);font-weight:700;font-size:26px;color:var(--gold);font-variant-numeric:tabular-nums;letter-spacing:-1px}
+.donut .center .ct{font-family:var(--mono);font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin-top:2px}
+.legend{display:flex;flex-direction:column;gap:2px}
+.lrow{display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid var(--line);font-size:12.5px}
+.lrow:last-child{border-bottom:none}
+.lrow .sw{width:9px;height:9px;border-radius:2px;flex:none}
+.lrow .nm{color:var(--text-2);flex:1;font-family:var(--mono);font-size:11.5px}
+.lrow.you .nm{color:var(--gold-br)}
+.lrow .pc{font-family:var(--mono);font-weight:500;color:var(--text);font-variant-numeric:tabular-nums}
+.posfoot{display:flex;justify-content:space-between;margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+.posfoot .pf{display:flex;flex-direction:column;gap:5px}
+.posfoot .pf .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);white-space:nowrap}
+.posfoot .pf .vv{font-family:var(--mono);font-size:16px;color:var(--text)} .posfoot .pf .vv.gold{color:var(--gold)}
+
+/* deposit / withdraw */
+.ifield{display:flex;border:1px solid var(--line-2);background:var(--bg);border-radius:4px}
+.ifield:focus-within{border-color:var(--violet)}
+.ifield input{flex:1;min-width:0;border:none;background:transparent;color:var(--text);font-family:var(--mono);
+  font-size:19px;padding:14px 15px;outline:none}
+.ifield .suffix{display:flex;align-items:center;color:var(--dim);font-family:var(--mono);font-size:12px;padding-right:6px}
+.ifield .max{border:none;background:transparent;color:var(--violet-br);font-family:var(--mono);font-size:11px;
+  letter-spacing:.1em;padding:0 15px;cursor:pointer}
+.ifield .max:hover{color:var(--gold)}
+.preset{display:flex;gap:8px;margin-top:10px}
+.preset button{flex:1;font-family:var(--mono);font-size:11.5px;color:var(--text-2);background:var(--surface-2);
+  border:1px solid var(--line);border-radius:3px;padding:8px 0;cursor:pointer;transition:.14s}
+.preset button:hover{border-color:var(--violet);color:#fff}
+.act2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.faucet{margin-top:13px;font-size:12px;color:var(--dim);text-align:center}
+.faucet a{cursor:pointer;border-bottom:1px dotted var(--dim-2)}
+
+/* ---------- draw machine + slot reel ---------- */
+.machine{border:1px solid var(--line-2);margin-top:16px;background:var(--surface);border-radius:6px;overflow:hidden}
+.mhead{display:flex;justify-content:space-between;align-items:center;padding:17px 22px;border-bottom:1px solid var(--line)}
+.mhead .ttl{font-size:14px;font-weight:600;display:flex;align-items:center;gap:9px}
+.mhead .ttl::before{content:"";width:3px;height:13px;background:var(--accent);border-radius:2px}
+.mhead .run{display:flex;gap:10px}
+
+.msteps{display:grid;grid-template-columns:repeat(3,1fr)}
+.ms{padding:18px 22px;border-right:1px solid var(--line);position:relative}
+.ms:last-child{border-right:none}
+.ms .idx{font-family:var(--mono);font-size:11px;color:var(--violet-br);letter-spacing:.06em}
+.ms .st{font-weight:600;font-size:13.5px;margin:8px 0 5px}
+.ms .sd{color:var(--dim);font-size:12px;line-height:1.5}
+.ms.on{background:var(--violet-dim)} .ms.on::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--violet)}
+.ms.done .idx{color:var(--green)}
+
+/* the reel */
+.reel-wrap{border-top:1px solid var(--line);padding:22px;display:grid;grid-template-columns:1.4fr 1fr;gap:22px;align-items:stretch;
+  background:radial-gradient(60% 100% at 50% 0%,rgba(124,92,255,.05),transparent)}
+.reel{position:relative;height:188px;border:1px solid var(--line-2);border-radius:5px;overflow:hidden;background:var(--bg-2)}
+.reel .mask-top,.reel .mask-bot{position:absolute;left:0;right:0;height:64px;z-index:3;pointer-events:none}
+.reel .mask-top{top:0;background:linear-gradient(var(--bg-2),transparent)}
+.reel .mask-bot{bottom:0;background:linear-gradient(transparent,var(--bg-2))}
+.reel .winline{position:absolute;left:0;right:0;top:50%;height:48px;transform:translateY(-50%);z-index:2;pointer-events:none;
+  border-top:1px solid var(--accent);border-bottom:1px solid var(--accent);
+  background:linear-gradient(90deg,transparent,var(--violet-dim-2),transparent)}
+.reel .winline.locked{border-color:var(--gold);background:linear-gradient(90deg,transparent,rgba(233,185,73,.16),transparent)}
+.reel .strip-inner{position:absolute;left:0;right:0;top:0;will-change:transform}
+.reel .cell{height:48px;display:flex;align-items:center;justify-content:center;gap:10px;font-family:var(--mono);font-size:15px;color:var(--text-2)}
+.reel .cell .tk{font-size:10px;color:var(--dim-2)}
+.reel.spinning .cell{filter:blur(.4px)}
+.reel.idle-spin .strip-inner{animation:idlescroll 7s linear infinite}
+@keyframes idlescroll{from{transform:translateY(0)}to{transform:translateY(-1152px)}}
+.reel .cell.win{color:var(--gold-br);font-weight:700}
+.reel .idle{position:absolute;inset:0;display:grid;place-items:center;text-align:center;color:var(--dim);font-size:13px;z-index:4;padding:0 24px;line-height:1.6}
+
+/* commit / hash readout panel */
+.commit{border:1px solid var(--line-2);border-radius:5px;background:var(--bg-2);padding:18px;display:flex;flex-direction:column;gap:13px}
+.commit .crow{display:flex;flex-direction:column;gap:5px}
+.commit .ck{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.commit .cv{font-family:var(--mono);font-size:13px;color:var(--text);word-break:break-all}
+.commit .cv.hash{color:var(--violet-br);font-size:11.5px;line-height:1.5}
+.commit .cv.hash.locked{color:var(--gold)}
+.commit .status{margin-top:auto;display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;color:var(--dim);
+  padding-top:12px;border-top:1px solid var(--line)}
+.commit .status .sd{width:7px;height:7px;border-radius:50%;background:var(--dim-2)}
+.commit .status.live .sd{background:var(--amber);animation:pulse 1.4s infinite}
+.commit .status.win .sd{background:var(--gold)}
+
+.mhint{padding:13px 22px;border-top:1px solid var(--line);font-family:var(--mono);font-size:11px;color:var(--dim)}
+.whoruns{display:flex;align-items:baseline;gap:13px;padding:13px 22px 16px;border-top:1px solid var(--line);
+  background:radial-gradient(120% 100% at 0% 0%,var(--violet-dim),transparent 60%)}
+.whoruns .wlabel{flex:none;font-family:var(--mono);font-size:10px;letter-spacing:.13em;text-transform:uppercase;
+  color:var(--violet-br);position:relative;padding-left:15px}
+.whoruns .wlabel::before{content:"";position:absolute;left:0;top:50%;transform:translateY(-50%);
+  width:7px;height:7px;border-radius:50%;background:var(--violet);box-shadow:0 0 8px var(--violet)}
+.whoruns .wtext{font-size:12.5px;color:var(--text-2);line-height:1.5;text-wrap:pretty}
+.whoruns .wtext b{color:var(--text);font-weight:600}
+@media(max-width:880px){.whoruns{flex-direction:column;gap:6px}}
+
+/* ---------- winners ---------- */
+.winners{border:1px solid var(--line-2);margin-top:16px;background:var(--surface);border-radius:6px;overflow:hidden}
+.winners .wh{display:flex;justify-content:space-between;align-items:center;padding:17px 22px;border-bottom:1px solid var(--line)}
+table{width:100%;border-collapse:collapse}
+thead th{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim-2);
+  text-align:left;padding:11px 22px;border-bottom:1px solid var(--line);font-weight:500}
+thead th.r,tbody td.r{text-align:right}
+tbody td{padding:14px 22px;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:13px}
+tbody tr:last-child td{border-bottom:none}
+tbody tr.fresh{background:var(--violet-dim);animation:rowin .6s ease}
+@keyframes rowin{0%{background:rgba(233,185,73,.18);transform:translateY(-4px)}100%{transform:translateY(0)}}
+td .id{color:var(--violet-br)} td .amt{color:var(--gold);font-weight:500}
+td .when{color:var(--dim)} td .hashlink{color:var(--dim);font-size:11px}
+td .hashlink:hover{color:var(--violet-br)}
+.freshdot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);margin-right:7px;vertical-align:middle}
+.empty{padding:28px 22px;text-align:center;color:var(--dim);font-size:13px}
+
+footer{margin-top:36px;padding-top:18px;border-top:1px solid var(--line);display:flex;justify-content:space-between;
+  flex-wrap:wrap;gap:10px;font-family:var(--mono);font-size:11px;color:var(--dim)}
+
+#toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(16px);background:var(--surface-2);
+  border:1px solid var(--violet);color:var(--text);padding:13px 20px;font-size:13px;opacity:0;pointer-events:none;
+  transition:opacity .2s,transform .2s;z-index:50;max-width:90vw;border-radius:4px}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#confetti{position:fixed;inset:0;pointer-events:none;z-index:60}
+
+@media(max-width:880px){
+  .board{grid-template-columns:1fr}.orbcell{border-right:none;border-bottom:1px solid var(--line)}
+  .info .cta .btn{flex:1}.fair{flex-direction:column;gap:14px}
+  .strip{grid-template-columns:1fr 1fr}.strip>div:nth-child(2){border-right:none}
+  .strip>div:nth-child(1),.strip>div:nth-child(2){border-bottom:1px solid var(--line)}
+  .cols{grid-template-columns:1fr}.msteps{grid-template-columns:1fr}.ms{border-right:none;border-bottom:1px solid var(--line)}
+  .reel-wrap{grid-template-columns:1fr}
+  .mhead{flex-direction:column;gap:12px;align-items:stretch}.mhead .run .btn{flex:1}
+  .pos{grid-template-columns:1fr;justify-items:center}.legend{width:100%}
+}
+
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.2/ethers.umd.min.js"></script>
+</head>
+<body data-intensity="calm" data-motion="on">
+<canvas id="confetti"></canvas>
+<div id="tweaks-root"></div>
+
+<div class="wrap">
+  <nav data-screen-label="DrawPool home">
+    <div class="logo">
+      <svg width="34" height="34" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="DrawPool">
+        <g transform="translate(32,33)">
+          <path d="M0 -22 L-15 6 A15 16 0 0 0 0 17 Z" fill="#5B34D6"></path>
+          <path d="M0 -22 L15 6 A15 16 0 0 1 0 17 Z" fill="#7C5CFF"></path>
+          <path d="M0 -22 L-6 4 L0 17 L6 4 Z" fill="#A78BFA"></path>
+          <path d="M0 -22 L-6 4 L6 4 Z" fill="#C9B6FF"></path>
+          <path d="M0 -22 L6 4 L0 4 Z" fill="#E9B949"></path>
+        </g>
+      </svg>
+      <span class="name">Draw<span class="p">Pool</span><span id="demoFlag" class="demo-flag">demo</span></span>
+    </div>
+    <div class="navright">
+      <span class="chip" id="chip"><span class="dot"></span> OPN Testnet · 984</span>
+      <button class="btn" id="connect">Connect Wallet</button>
+    </div>
+  </nav>
+
+  <!-- jackpot board -->
+  <section class="board">
+    <div class="orbcell">
+      <div class="orb">
+        <div class="aura"></div>
+        <svg class="gemsvg" viewBox="0 0 200 200" aria-hidden="true">
+          <defs>
+            <radialGradient id="gemSheen" cx="42%" cy="36%" r="72%">
+              <stop offset="0%" stop-color="#ffffff" stop-opacity=".35"></stop>
+              <stop offset="45%" stop-color="#ffffff" stop-opacity="0"></stop>
+            </radialGradient>
+          </defs>
+          <g transform="translate(100,104) scale(3.7)">
+            <path d="M0 -22 L-15 6 A15 16 0 0 0 0 17 Z" fill="#5B34D6"></path>
+            <path d="M0 -22 L15 6 A15 16 0 0 1 0 17 Z" fill="#7C5CFF"></path>
+            <path d="M0 -22 L-6 4 L0 17 L6 4 Z" fill="#A78BFA"></path>
+            <path d="M0 -22 L-6 4 L6 4 Z" fill="#C9B6FF"></path>
+            <path d="M0 -22 L6 4 L0 4 Z" fill="#E9B949"></path>
+            <path d="M0 -22 L15 6 A15 16 0 0 1 -15 6 Z" fill="url(#gemSheen)"></path>
+            <path d="M0 -22 L15 6 A15 16 0 0 1 -15 6 Z" fill="none" stroke="#C9B6FF" stroke-width=".5" opacity=".5"></path>
+          </g>
+        </svg>
+        <svg class="ring" viewBox="0 0 258 258">
+          <circle cx="129" cy="129" r="120" fill="none" stroke="var(--line)" stroke-width="4"></circle>
+          <circle id="cdRing" cx="129" cy="129" r="120" fill="none" stroke="var(--accent)" stroke-width="4"
+            stroke-linecap="butt" stroke-dasharray="754" stroke-dashoffset="240"></circle>
+        </svg>
+        <div class="core">
+          <div>
+            <div class="plabel">Current jackpot</div>
+            <div class="num tnum"><span id="prize">0</span></div>
+            <div class="cur">tUSDC</div>
+          </div>
+        </div>
+      </div>
+      <div class="drip" id="drip" style="display:none">
+        <span class="arrow">▲</span> yield flowing in <b id="dripRate">+0.0042</b> tUSDC/s
+      </div>
+      <div class="clk" id="clk">
+        <div class="timer" id="cdT">--:--:--</div>
+        <div class="l">until next draw</div>
+      </div>
+    </div>
+    <div class="info">
+      <div class="row1">
+        <span class="badge">No-loss</span>
+        <span class="lbl">winner takes the entire pool's yield</span>
+      </div>
+      <div class="tagline">Deposit stablecoins, keep <b>every cent</b> of your principal. One depositor takes the whole pool's yield each draw — your odds scale with your balance.</div>
+      <div class="cta">
+        <button class="btn gold" id="heroDeposit">Deposit</button>
+        <button class="btn ghost" id="heroFaucet">Get test tUSDC</button>
+      </div>
+      <!-- compact provably-fair strip -->
+      <div class="fair" id="fair" style="display:none">
+        <div class="fi">
+          <div class="ft"><span class="ic"></span>Instant finality</div>
+          <div class="fd">Tendermint BFT — the committed block is final the instant it's produced.</div>
+        </div>
+        <div class="fi">
+          <div class="ft"><span class="ic"></span>No reorgs</div>
+          <div class="fd">Its hash can't be rewritten after the fact, so the draw can't be re-rolled.</div>
+        </div>
+        <div class="fi">
+          <div class="ft"><span class="ic"></span>Future-block entropy</div>
+          <div class="fd">Randomness derives from a block nobody can predict at commit time. <a id="fairLink" href="https://testnet.opnscan.io" target="_blank">Verify →</a></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- stat strip -->
+  <section class="strip">
+    <div><div class="lbl">Pool size</div><div class="v violet" id="mTotal">—</div></div>
+    <div><div class="lbl">Players</div><div class="v" id="mPart">—</div></div>
+    <div><div class="lbl">Prizes paid</div><div class="v gold" id="mPaid">—</div></div>
+    <div><div class="lbl">Draws settled</div><div class="v" id="mDraws">—</div></div>
+  </section>
+
+  <!-- position + deposit -->
+  <div class="cols">
+    <div class="card">
+      <h2>Your position &amp; odds</h2>
+      <div class="note">Win chance is your share of the pool — principal is always withdrawable 1:1.</div>
+      <div class="pos">
+        <div class="donut">
+          <svg id="donutSvg" viewBox="0 0 152 152" width="152" height="152"></svg>
+          <div class="center">
+            <div>
+              <div class="pct" id="donutPct">0%</div>
+              <div class="ct">your odds</div>
+            </div>
+          </div>
+        </div>
+        <div class="legend" id="legend"></div>
+      </div>
+      <div class="posfoot">
+        <div class="pf"><span class="k">Your deposit</span><span class="vv" id="uBal">— tUSDC</span></div>
+        <div class="pf"><span class="k">Win chance</span><span class="vv gold" id="uOdds">—</span></div>
+        <div class="pf"><span class="k">Wallet</span><span class="vv" id="uWallet">— tUSDC</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Deposit / Withdraw</h2>
+      <div class="note">Approve once, then deposit. The more you pool, the better your odds — and you can only ever win.</div>
+      <div class="ifield">
+        <input id="amt" type="text" inputmode="decimal" placeholder="0.00" />
+        <span class="suffix">tUSDC</span>
+        <button class="max" id="maxBtn">MAX</button>
+      </div>
+      <div class="preset">
+        <button data-v="100">100</button>
+        <button data-v="500">500</button>
+        <button data-v="1000">1,000</button>
+        <button data-v="5000">5,000</button>
+      </div>
+      <div class="act2">
+        <button class="btn" id="depositBtn">Deposit</button>
+        <button class="btn ghost" id="withdrawBtn">Withdraw</button>
+      </div>
+      <div class="faucet">No funds yet? <a id="faucetBtn">Claim 1,000 tUSDC from the faucet</a></div>
+    </div>
+  </div>
+
+  <!-- draw machine + slot reel -->
+  <section class="machine">
+    <div class="mhead">
+      <span class="ttl">Draw machine — anyone can spin it, nobody can predict it</span>
+      <span class="run">
+        <button class="btn" id="startBtn">Start draw</button>
+        <button class="btn gold" id="awardBtn">Award prize</button>
+      </span>
+    </div>
+    <div class="msteps">
+      <div class="ms" id="st1"><div class="idx">01 / COMMIT</div><div class="st">Lock &amp; commit</div>
+        <div class="sd">The pool locks and commits to a future OPN block. Nobody can react to the outcome.</div></div>
+      <div class="ms" id="st2"><div class="idx">02 / FINALIZE</div><div class="st">Block finalizes</div>
+        <div class="sd">A few ~1s blocks later it's final forever — no reorgs on OPN, so the hash can't be rigged.</div></div>
+      <div class="ms" id="st3"><div class="idx">03 / AWARD</div><div class="st">Winner drawn</div>
+        <div class="sd">Yield is harvested, a balance-weighted winner is selected, and the prize compounds in.</div></div>
+    </div>
+
+    <div class="reel-wrap">
+      <div class="reel" id="reel">
+        <div class="mask-top"></div>
+        <div class="mask-bot"></div>
+        <div class="winline" id="winline"></div>
+        <div class="strip-inner" id="reelInner"></div>
+        <div class="idle" id="reelIdle">Press <b style="color:var(--violet-br)">Start draw</b> to commit to a block, then <b style="color:var(--gold-br)">Award prize</b> to spin the weighted winner.</div>
+      </div>
+      <div class="commit">
+        <div class="crow"><span class="ck">Committed block</span><span class="cv" id="cBlock">—</span></div>
+        <div class="crow"><span class="ck">Block hash (entropy source)</span><span class="cv hash" id="cHash">—</span></div>
+        <div class="status" id="cStatus"><span class="sd"></span><span id="cStatusT">Idle — pool open</span></div>
+      </div>
+    </div>
+    <div class="mhint" id="runHint">Draws are permissionless — any player can run one when the timer hits zero.</div>
+    <div class="whoruns">
+      <span class="wlabel">Who runs draws?</span>
+      <span class="wtext">Permissionless — <b>any player</b> can trigger a draw once the timer hits zero, or a <b>keeper bot</b> fires it automatically. The contract picks the winner; nobody can rig or skip it.</span>
+    </div>
+  </section>
+
+  <!-- winners -->
+  <section class="winners">
+    <div class="wh"><span class="lbl">Recent winners</span><a id="explorerLink" target="_blank" class="lbl" style="color:var(--violet-br)">Explorer →</a></div>
+    <table>
+      <thead><tr><th>Draw</th><th>Winner</th><th class="r">Prize</th><th class="r">Entropy</th><th class="r">Date</th></tr></thead>
+      <tbody id="wlist"></tbody>
+    </table>
+  </section>
+
+  <footer>
+    <span>DRAWPOOL · SEASON 1 — DEFI &amp; OPEN FINANCE · IOPN BUILDERS</span>
+    <span id="addrLine">CONNECT A WALLET TO PLAY ON OPN TESTNET</span>
+  </footer>
+</div>
+
+<div id="toast"></div>
+
+<!-- Live-mode config: generated by deploy.js. null → demo mode. -->
+<script>
+/* ============================================================
+   DrawPool live config — PLACEHOLDER.
+   This file is overwritten by deploy.js after you deploy the
+   contracts to OPN testnet. While it only contains the line
+   below, the frontend runs in DEMO mode (no wallet calls).
+
+   deploy.js writes something like:
+
+   window.DRAWPOOL_CONFIG = {
+     chainId: 984,
+     rpc: "https://testnet-rpc.iopn.tech",
+     explorer: "https://testnet.opnscan.io",
+     contracts: {
+       MockUSDC: "0x…",
+       SponsoredYieldSource: "0x…",
+       FinalityRandomness: "0x…",
+       DrawPool: "0x…"
+     }
+   };
+   ============================================================ */
+window.DRAWPOOL_CONFIG = null;
+
+</script>
+<script>
+window.DRAWPOOL_ABI = {
+  "MockUSDC": [
+    {
+      "inputs": [],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "spender",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "allowance",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "needed",
+          "type": "uint256"
+        }
+      ],
+      "name": "ERC20InsufficientAllowance",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "sender",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "balance",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "needed",
+          "type": "uint256"
+        }
+      ],
+      "name": "ERC20InsufficientBalance",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "approver",
+          "type": "address"
+        }
+      ],
+      "name": "ERC20InvalidApprover",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "receiver",
+          "type": "address"
+        }
+      ],
+      "name": "ERC20InvalidReceiver",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "sender",
+          "type": "address"
+        }
+      ],
+      "name": "ERC20InvalidSender",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "spender",
+          "type": "address"
+        }
+      ],
+      "name": "ERC20InvalidSpender",
+      "type": "error"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "owner",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "spender",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "value",
+          "type": "uint256"
+        }
+      ],
+      "name": "Approval",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "from",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "to",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "value",
+          "type": "uint256"
+        }
+      ],
+      "name": "Transfer",
+      "type": "event"
+    },
+    {
+      "inputs": [],
+      "name": "FAUCET_AMOUNT",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "owner",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "spender",
+          "type": "address"
+        }
+      ],
+      "name": "allowance",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "spender",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "value",
+          "type": "uint256"
+        }
+      ],
+      "name": "approve",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        }
+      ],
+      "name": "balanceOf",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "decimals",
+      "outputs": [
+        {
+          "internalType": "uint8",
+          "name": "",
+          "type": "uint8"
+        }
+      ],
+      "stateMutability": "pure",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "faucet",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "to",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "mint",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "name",
+      "outputs": [
+        {
+          "internalType": "string",
+          "name": "",
+          "type": "string"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "symbol",
+      "outputs": [
+        {
+          "internalType": "string",
+          "name": "",
+          "type": "string"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "totalSupply",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "to",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "value",
+          "type": "uint256"
+        }
+      ],
+      "name": "transfer",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "from",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "to",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "value",
+          "type": "uint256"
+        }
+      ],
+      "name": "transferFrom",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "SponsoredYieldSource": [
+    {
+      "inputs": [
+        {
+          "internalType": "contract IERC20",
+          "name": "_token",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "admin",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "owner",
+          "type": "address"
+        }
+      ],
+      "name": "OwnableInvalidOwner",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        }
+      ],
+      "name": "OwnableUnauthorizedAccount",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "token",
+          "type": "address"
+        }
+      ],
+      "name": "SafeERC20FailedOperation",
+      "type": "error"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "to",
+          "type": "address"
+        }
+      ],
+      "name": "Harvested",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "previousOwner",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "newOwner",
+          "type": "address"
+        }
+      ],
+      "name": "OwnershipTransferred",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "pool",
+          "type": "address"
+        }
+      ],
+      "name": "PoolSet",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "yieldPerSecond",
+          "type": "uint256"
+        }
+      ],
+      "name": "RateSet",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "to",
+          "type": "address"
+        }
+      ],
+      "name": "Redeemed",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "from",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "Sponsored",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "Supplied",
+      "type": "event"
+    },
+    {
+      "inputs": [],
+      "name": "accrued",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "accruedYield",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "asset",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "to",
+          "type": "address"
+        }
+      ],
+      "name": "harvest",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "lastAccrual",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "owner",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "pool",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "principal",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "to",
+          "type": "address"
+        }
+      ],
+      "name": "redeem",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "renounceOwnership",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "reserve",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_pool",
+          "type": "address"
+        }
+      ],
+      "name": "setPool",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "rate",
+          "type": "uint256"
+        }
+      ],
+      "name": "setYieldPerSecond",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "sponsor",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "supply",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "token",
+      "outputs": [
+        {
+          "internalType": "contract IERC20",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "totalPrincipal",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "newOwner",
+          "type": "address"
+        }
+      ],
+      "name": "transferOwnership",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "yieldPerSecond",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "FinalityRandomness": [
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "consumer",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "key",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "newCommitBlock",
+          "type": "uint256"
+        }
+      ],
+      "name": "Recommitted",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "consumer",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "key",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "commitBlock",
+          "type": "uint256"
+        }
+      ],
+      "name": "Requested",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "consumer",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "key",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "random",
+          "type": "uint256"
+        }
+      ],
+      "name": "Revealed",
+      "type": "event"
+    },
+    {
+      "inputs": [],
+      "name": "COMMIT_DELAY",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "name": "commitBlockOf",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "consumer",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "key",
+          "type": "uint256"
+        }
+      ],
+      "name": "isReady",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "key",
+          "type": "uint256"
+        }
+      ],
+      "name": "request",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "availableAtBlock",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "key",
+          "type": "uint256"
+        }
+      ],
+      "name": "reveal",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "random",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bool",
+          "name": "ready",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "DrawPool": [
+    {
+      "inputs": [
+        {
+          "internalType": "contract IERC20",
+          "name": "_asset",
+          "type": "address"
+        },
+        {
+          "internalType": "contract IYieldSource",
+          "name": "_yield",
+          "type": "address"
+        },
+        {
+          "internalType": "contract IRandomnessSource",
+          "name": "_rng",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_drawInterval",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "inputs": [],
+      "name": "DrawAlreadyActive",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "NoActiveDraw",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "NoPrizeYet",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "NothingDeposited",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "PoolLocked",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "RandomnessNotReady",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "ReentrancyGuardReentrantCall",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "token",
+          "type": "address"
+        }
+      ],
+      "name": "SafeERC20FailedOperation",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "TooEarly",
+      "type": "error"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "user",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "newBalance",
+          "type": "uint256"
+        }
+      ],
+      "name": "Deposited",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint64",
+          "name": "id",
+          "type": "uint64"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "winner",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "prize",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "random",
+          "type": "uint256"
+        }
+      ],
+      "name": "DrawAwarded",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint64",
+          "name": "id",
+          "type": "uint64"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "snapshotTotal",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "availableAtBlock",
+          "type": "uint256"
+        }
+      ],
+      "name": "DrawStarted",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "user",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "newBalance",
+          "type": "uint256"
+        }
+      ],
+      "name": "Withdrawn",
+      "type": "event"
+    },
+    {
+      "inputs": [],
+      "name": "asset",
+      "outputs": [
+        {
+          "internalType": "contract IERC20",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "award",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "balanceOf",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "currentDraw",
+      "outputs": [
+        {
+          "internalType": "uint64",
+          "name": "id",
+          "type": "uint64"
+        },
+        {
+          "internalType": "uint64",
+          "name": "startedAt",
+          "type": "uint64"
+        },
+        {
+          "internalType": "uint256",
+          "name": "snapshotTotal",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "prize",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "winner",
+          "type": "address"
+        },
+        {
+          "internalType": "bool",
+          "name": "awarded",
+          "type": "bool"
+        },
+        {
+          "internalType": "uint256",
+          "name": "randomness",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "currentPrize",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "deposit",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "drawActive",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "drawCount",
+      "outputs": [
+        {
+          "internalType": "uint64",
+          "name": "",
+          "type": "uint64"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "drawInterval",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "name": "history",
+      "outputs": [
+        {
+          "internalType": "uint64",
+          "name": "id",
+          "type": "uint64"
+        },
+        {
+          "internalType": "uint64",
+          "name": "startedAt",
+          "type": "uint64"
+        },
+        {
+          "internalType": "uint256",
+          "name": "snapshotTotal",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "prize",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "winner",
+          "type": "address"
+        },
+        {
+          "internalType": "bool",
+          "name": "awarded",
+          "type": "bool"
+        },
+        {
+          "internalType": "uint256",
+          "name": "randomness",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "historyLength",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "lastDrawAt",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "nextDrawAt",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "user",
+          "type": "address"
+        }
+      ],
+      "name": "oddsBps",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "i",
+          "type": "uint256"
+        }
+      ],
+      "name": "participantAt",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "participantCount",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "rng",
+      "outputs": [
+        {
+          "internalType": "contract IRandomnessSource",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "startDraw",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "totalDeposited",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "withdraw",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "yield",
+      "outputs": [
+        {
+          "internalType": "contract IYieldSource",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ]
+};
+
+</script>
+<script>
+/* ============================================================
+   DrawPool app — demo state machine + ethers compatibility.
+   - Shows representative demo data immediately (flagged "demo").
+   - When window.DRAWPOOL_CONFIG + DRAWPOOL_ABI exist and a wallet
+     connects, the SAME handlers run live against OPN testnet
+     using the original contract interface.
+   ============================================================ */
+const DEC = 6;
+const cfg = window.DRAWPOOL_CONFIG || null;
+const ABIS = window.DRAWPOOL_ABI || null;
+let provider, signer, account, usdc, pool, yieldSrc, rng;
+let cad = 86400, lastDrawAt = 0, liveMode = false, prizeShown = 0, yieldRate = 0;
+
+const $ = (id) => document.getElementById(id);
+const fmt = (bn, d = 0) => Number(ethers.formatUnits(bn, DEC)).toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+const shortAddr = (a) => a.slice(0, 6) + "…" + a.slice(-4);
+const HEX = "0123456789abcdef";
+const randHex = (n) => Array.from({ length: n }, () => HEX[Math.random() * 16 | 0]).join("");
+const randAddr = () => "0x" + randHex(4) + "…" + randHex(4);
+const randHash = () => "0x" + randHex(64);
+
+function toast(m) {
+  const t = $("toast"); t.textContent = m; t.classList.add("show");
+  clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("show"), 4000);
+}
+
+/* ============================================================
+   SOUND ENGINE — synthesized via Web Audio (no asset files).
+   Signal flow:  voices → [dry + reverb send] → bus → limiter → out
+   Lazy-initialized on first user gesture (Start/Award click).
+   ============================================================ */
+let actx = null, soundOn = true, sBus = null, sRev = null, sNoise = null;
+function audio() {
+  if (!soundOn) return null;
+  if (!actx) {
+    try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; }
+    // master bus → soft limiter → destination
+    const lim = actx.createDynamicsCompressor();
+    lim.threshold.value = -6; lim.knee.value = 6; lim.ratio.value = 12; lim.attack.value = 0.003; lim.release.value = 0.14;
+    sBus = actx.createGain(); sBus.gain.value = 0.9;
+    sBus.connect(lim); lim.connect(actx.destination);
+    // plate-ish reverb for polish
+    const conv = actx.createConvolver(); conv.buffer = makeIR(2.2, 2.6);
+    sRev = actx.createGain(); sRev.gain.value = 0.9;
+    conv.connect(sRev); sRev.connect(sBus); sBus._conv = conv;
+    // shared white-noise buffer
+    const len = actx.sampleRate; sNoise = actx.createBuffer(1, len, actx.sampleRate);
+    const d = sNoise.getChannelData(0); for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+  }
+  if (actx.state === "suspended") actx.resume();
+  return actx;
+}
+function makeIR(sec, decay) {
+  const rate = actx.sampleRate, len = rate * sec, buf = actx.createBuffer(2, len, rate);
+  for (let ch = 0; ch < 2; ch++) { const d = buf.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay); }
+  return buf;
+}
+/* route a node: dry to bus + scaled send to reverb */
+function route(node, wet) {
+  node.connect(sBus);
+  if (wet > 0) { const s = actx.createGain(); s.gain.value = wet; node.connect(s); s.connect(sBus._conv); }
+}
+/* short filtered-noise transient — a real mechanical "tick/clack", not a beep */
+function click(t, { freq = 2000, q = 4, dur = 0.05, gain = 0.3, wet = 0.12 } = {}) {
+  const a = audio(); if (!a) return;
+  const src = a.createBufferSource(); src.buffer = sNoise; src.loop = true;
+  src.playbackRate.value = 0.8 + Math.random() * 0.4;
+  const bp = a.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = freq; bp.Q.value = q;
+  const g = a.createGain(); g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(gain, t + 0.002);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  src.connect(bp).connect(g); route(g, wet); src.start(t); src.stop(t + dur + 0.02);
+}
+/* detuned-saw voice with ADSR + lowpass — warm musical tone for chords */
+function voice(freq, t, dur, { gain = 0.18, attack = 0.012, release = 0.4, cutoff = 2600, wet = 0.35, pan = 0 } = {}) {
+  const a = audio(); if (!a) return;
+  const o1 = a.createOscillator(), o2 = a.createOscillator(), o3 = a.createOscillator();
+  o1.type = o2.type = "sawtooth"; o3.type = "sine";
+  o1.frequency.value = freq; o2.frequency.value = freq; o3.frequency.value = freq / 2;
+  o1.detune.value = -9; o2.detune.value = 9;
+  const lp = a.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.setValueAtTime(cutoff * 1.7, t);
+  lp.frequency.exponentialRampToValueAtTime(cutoff, t + dur * 0.6); lp.Q.value = 0.7;
+  const g = a.createGain(); g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(gain, t + attack);
+  g.gain.setValueAtTime(gain, t + Math.max(attack, dur - release));
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  const p = a.createStereoPanner ? a.createStereoPanner() : null; if (p) p.pan.value = pan;
+  o1.connect(lp); o2.connect(lp); o3.connect(lp);
+  if (p) { lp.connect(g).connect(p); route(p, wet); } else { lp.connect(g); route(g, wet); }
+  [o1, o2, o3].forEach(o => { o.start(t); o.stop(t + dur + 0.05); });
+}
+/* FM bell — bright metallic shimmer / coin sparkle */
+function bell(freq, t, dur, gain = 0.06, wet = 0.5, pan = 0) {
+  const a = audio(); if (!a) return;
+  const car = a.createOscillator(), mod = a.createOscillator(), mg = a.createGain(), g = a.createGain();
+  car.type = "sine"; mod.type = "sine"; mod.frequency.value = freq * 2.01;
+  mg.gain.setValueAtTime(freq * 3, t); mg.gain.exponentialRampToValueAtTime(1, t + dur);
+  car.frequency.value = freq; mod.connect(mg); mg.connect(car.frequency);
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(gain, t + 0.004);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  const p = a.createStereoPanner ? a.createStereoPanner() : null; if (p) p.pan.value = pan;
+  if (p) { car.connect(g).connect(p); route(p, wet); } else { car.connect(g); route(g, wet); }
+  car.start(t); mod.start(t); car.stop(t + dur + 0.05); mod.stop(t + dur + 0.05);
+}
+/* pitch-dropping sine sub — body / impact */
+function sub(t, f0, f1, dur, gain = 0.5, wet = 0.1) {
+  const a = audio(); if (!a) return;
+  const o = a.createOscillator(), g = a.createGain();
+  o.type = "sine"; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(gain, t + 0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g); route(g, wet); o.start(t); o.stop(t + dur + 0.05);
+}
+
+/* deep mechanical "lock" when the pool commits to a block */
+function sndCommit() {
+  const a = audio(); if (!a) return; const t = a.currentTime;
+  sub(t, 150, 52, 0.34, 0.5);
+  click(t, { freq: 340, q: 1.4, dur: 0.16, gain: 0.4, wet: 0.18 });      // low thunk body
+  click(t + 0.006, { freq: 1900, q: 7, dur: 0.05, gain: 0.16, wet: 0.1 }); // metallic top
+  bell(640, t + 0.02, 0.4, 0.05, 0.5);                                     // subtle ring-out
+}
+/* decelerating mechanical reel — filtered-noise clacks that dull as it slows */
+function sndReel(durMs) {
+  const a = audio(); if (!a) return; const t0 = a.currentTime, T = durMs / 1000, N = 32;
+  for (let i = 0; i < N; i++) {
+    const p = i / (N - 1);
+    const when = t0 + (1 - Math.pow(1 - p, 2.5)) * (T - 0.04); // ease-out spacing → slows down
+    const freq = 2700 - p * 1500;                              // brightness falls as it decelerates
+    click(when, { freq, q: 5, dur: 0.045, gain: 0.13 + p * 0.06, wet: 0.08 });
+  }
+}
+/* polished casino win — sub impact + major arpeggio (detuned saws) + bell shimmer + coin shower */
+function sndWin() {
+  const a = audio(); if (!a) return; const t = a.currentTime;
+  sub(t, 120, 46, 0.5, 0.55);                                  // impact
+  click(t, { freq: 1100, q: 0.7, dur: 0.4, gain: 0.1, wet: 0.2 }); // riser whoosh
+  const arp = [523.25, 659.25, 783.99, 1046.5];                // C5 E5 G5 C6
+  arp.forEach((f, i) => {
+    const tt = t + i * 0.085;
+    voice(f, tt, 0.55, { gain: 0.15, cutoff: 3200, wet: 0.32, pan: (i - 1.5) * 0.3 });
+    bell(f * 2, tt, 0.5, 0.05, 0.55, (i - 1.5) * 0.4);
+  });
+  const tc = t + arp.length * 0.085;                           // sustained C-major shimmer chord
+  [523.25, 659.25, 783.99, 1046.5, 1318.5].forEach((f, i) =>
+    voice(f, tc, 1.5, { gain: 0.085, attack: 0.05, release: 1.1, cutoff: 2600, wet: 0.5, pan: (i - 2) * 0.22 }));
+  for (let i = 0; i < 18; i++) {                               // coin shower sparkles
+    const tt = t + 0.15 + Math.random() * 1.3;
+    bell(1500 + Math.random() * 1900, tt, 0.22, 0.045, 0.6, (Math.random() - 0.5) * 1.4);
+  }
+}
+
+/* ---------------- tweaks bridge ---------------- */
+window.applyTweaks = function (t) {
+  const root = document.documentElement;
+  root.dataset.intensity = t.intensity || "balanced";
+  root.dataset.motion = t.reduceMotion ? "off" : "on";
+  $("drip").style.display = t.yieldTicker ? "flex" : "none";
+  $("fair").style.display = t.fairBlock ? "flex" : "none";
+  soundOn = t.sound !== false;
+};
+
+const TWEAK_DEFAULTS = {
+  intensity: "calm",
+  sound: true,
+  yieldTicker: false,
+  fairBlock: false,
+  reduceMotion: false,
+};
+
+function shouldExposeTweaks() {
+  const params = new URLSearchParams(window.location.search);
+  return window.location.protocol === "file:" ||
+    ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname) ||
+    params.get("tweaks") === "1";
+}
+
+function bootFallbackTweaks() {
+  if (!shouldExposeTweaks() || window.__DRAWPOOL_TWEAKS_BOOTED || $("dpTweaksLaunch")) return;
+  const style = document.createElement("style");
+  style.textContent = `
+    .dp-tweaks-launch{position:fixed;right:16px;bottom:16px;z-index:2147483645;height:32px;padding:0 12px;border:0;border-radius:999px;background:rgba(250,249,247,.9);color:#29261b;font:600 11px/1 ui-sans-serif,system-ui,-apple-system,sans-serif;letter-spacing:.08em;text-transform:uppercase;box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 12px 32px rgba(0,0,0,.16);-webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%)}
+    .dp-tweaks-panel{position:fixed;right:16px;bottom:16px;z-index:2147483646;width:280px;padding:14px;border-radius:14px;background:rgba(250,249,247,.92);color:#29261b;font:11.5px/1.45 ui-sans-serif,system-ui,-apple-system,sans-serif;box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 12px 40px rgba(0,0,0,.18);-webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%)}
+    .dp-tweaks-panel[hidden]{display:none}
+    .dp-tweaks-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+    .dp-tweaks-head b{font-size:12px;letter-spacing:.01em}
+    .dp-tweaks-close{border:0;background:transparent;color:rgba(41,38,27,.55);font-size:13px}
+    .dp-tweaks-group{display:grid;gap:8px;margin-top:10px}
+    .dp-tweaks-group strong{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:rgba(41,38,27,.45)}
+    .dp-tweaks-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+    .dp-tweaks-radio{display:flex;gap:6px}
+    .dp-tweaks-radio button{border:0;border-radius:999px;padding:6px 10px;background:rgba(0,0,0,.06);color:inherit;font:inherit}
+    .dp-tweaks-radio button[data-on="1"]{background:#29261b;color:#fff}
+    .dp-tweaks-row input{accent-color:#7c5cff}
+  `;
+  document.head.appendChild(style);
+
+  const launch = document.createElement("button");
+  launch.id = "dpTweaksLaunch";
+  launch.className = "dp-tweaks-launch";
+  launch.type = "button";
+  launch.textContent = "Tweaks";
+
+  const panel = document.createElement("div");
+  panel.id = "dpTweaksPanel";
+  panel.className = "dp-tweaks-panel";
+  panel.hidden = true;
+
+  const state = { ...TWEAK_DEFAULTS };
+  const redraw = () => {
+    panel.innerHTML = `
+      <div class="dp-tweaks-head"><b>Tweaks</b><button type="button" class="dp-tweaks-close" id="dpTweaksClose">✕</button></div>
+      <div class="dp-tweaks-group">
+        <strong>Gambling energy</strong>
+        <div class="dp-tweaks-row">
+          <span>Intensity</span>
+          <div class="dp-tweaks-radio">
+            ${["calm", "balanced", "hype"].map((v) => `<button type="button" data-k="intensity" data-v="${v}" data-on="${state.intensity === v ? "1" : "0"}">${v}</button>`).join("")}
+          </div>
+        </div>
+      </div>
+      <div class="dp-tweaks-group">
+        <strong>Readouts</strong>
+        ${[
+          ["sound", "Draw sound"],
+          ["yieldTicker", "Live yield ticker"],
+          ["fairBlock", "Provably fair block"],
+          ["reduceMotion", "Reduce motion"],
+        ].map(([k, label]) => `
+          <label class="dp-tweaks-row">
+            <span>${label}</span>
+            <input type="checkbox" data-k="${k}" ${state[k] ? "checked" : ""} />
+          </label>`).join("")}
+      </div>
+    `;
+    $("dpTweaksClose").onclick = () => {
+      panel.hidden = true;
+      launch.hidden = false;
+    };
+    panel.querySelectorAll("[data-k='intensity']").forEach((btn) => {
+      btn.onclick = () => {
+        state.intensity = btn.dataset.v;
+        window.applyTweaks(state);
+        redraw();
+      };
+    });
+    panel.querySelectorAll("input[data-k]").forEach((input) => {
+      input.onchange = () => {
+        state[input.dataset.k] = input.checked;
+        window.applyTweaks(state);
+      };
+    });
+  };
+
+  launch.onclick = () => {
+    launch.hidden = true;
+    panel.hidden = false;
+  };
+
+  redraw();
+  document.body.appendChild(launch);
+  document.body.appendChild(panel);
+  window.applyTweaks(state);
+  window.__DRAWPOOL_TWEAKS_BOOTED = true;
+}
+
+/* ---------------- jackpot ticking ---------------- */
+function setPrize(v) {
+  $("prize").textContent = v.toLocaleString("en-US", { maximumFractionDigits: 2 });
+  prizeShown = v;
+}
+function animatePrize(to) {
+  if (document.hidden || document.documentElement.dataset.motion === "off") { setPrize(to); return; }
+  const from = prizeShown, start = performance.now(), dur = 800;
+  (function step(now) {
+    const p = Math.min(1, (now - start) / dur), e = 1 - Math.pow(1 - p, 3);
+    setPrize(from + (to - from) * e);
+    if (p < 1) requestAnimationFrame(step); else prizeShown = to;
+  })(start);
+}
+/* continuous micro-drip so the jackpot is visibly alive */
+function startDrip() {
+  setInterval(() => {
+    if (document.hidden || drawRunning) return;
+    setPrize(prizeShown + yieldRate);
+    $("dripRate").textContent = "+" + yieldRate.toFixed(4);
+  }, 1000);
+}
+
+/* ---------------- donut (participant shares) ---------------- */
+const SHADES = ["#7c5cff", "#9a7dff", "#6a45e0", "#b29bff", "#5b34d6", "#8268f0"];
+function renderDonut(parts) {
+  // parts: [{name, bal, you}], sorted desc. "You" is ALWAYS surfaced as its
+  // own gold segment regardless of rank; the rest fill top-N + an Others bucket.
+  const total = parts.reduce((s, p) => s + p.bal, 0) || 1;
+  const you = parts.find((p) => p.you);
+  const others = parts.filter((p) => !p.you);
+  const topN = others.slice(0, 5);
+  const tail = others.slice(5);
+  const segs = [];
+  if (you) segs.push({ name: "You", bal: you.bal, you: true, color: "var(--gold)" });
+  topN.forEach((p, i) => segs.push({ name: p.name, bal: p.bal, color: SHADES[i % SHADES.length] }));
+  if (tail.length) segs.push({ name: "Others (" + tail.length + ")", bal: tail.reduce((s, p) => s + p.bal, 0), color: "#3a3a46" });
+
+  const C = 2 * Math.PI * 60, gap = 3;
+  let acc = 0, circles = "";
+  segs.forEach((s) => {
+    const f = s.bal / total, arc = Math.max(0, f * C - gap);
+    circles += `<circle class="seg" cx="76" cy="76" r="60" fill="none" stroke="${s.color}" stroke-width="${s.you ? 20 : 16}"
+      stroke-dasharray="${arc} ${C - arc}" stroke-dashoffset="${-acc * C}"></circle>`;
+    acc += f;
+  });
+  $("donutSvg").innerHTML = `<circle cx="76" cy="76" r="60" fill="none" stroke="var(--surface-3)" stroke-width="16"></circle>` + circles;
+
+  const youShare = you ? (you.bal / total * 100) : 0;
+  $("donutPct").textContent = youShare.toFixed(1) + "%";
+  $("legend").innerHTML = segs.map((s) => `
+    <div class="lrow ${s.you ? "you" : ""}">
+      <span class="sw" style="background:${s.color}"></span>
+      <span class="nm">${s.you ? "You" : s.name}</span>
+      <span class="pc">${(s.bal / total * 100).toFixed(1)}%</span>
+    </div>`).join("");
+  return youShare;
+}
+
+/* ---------------- countdown ---------------- */
+function fmtClock(s) {
+  const h = String(Math.floor(s / 3600)).padStart(2, "0");
+  const m = String(Math.floor(s % 3600 / 60)).padStart(2, "0");
+  const ss = String(s % 60).padStart(2, "0");
+  return `${h}:${m}:${ss}`;
+}
+function paintCountdown(left) {
+  const clk = $("clk"), C = 754;
+  clk.classList.toggle("soon", left > 0 && left <= 120);
+  if (left <= 0) {
+    $("cdT").textContent = "READY"; clk.classList.add("ready");
+    $("cdRing").style.strokeDashoffset = 0; $("cdRing").style.stroke = "var(--green)"; return;
+  }
+  clk.classList.remove("ready");
+  $("cdRing").style.stroke = left <= 120 ? "var(--amber)" : "var(--accent)";
+  const frac = Math.max(0, Math.min(1, left / cad));
+  $("cdRing").style.strokeDashoffset = C * (1 - frac);
+  $("cdT").textContent = fmtClock(left);
+}
+
+/* ============================================================
+   SLOT REEL — the draw "spin". Visual spectacle anchored to a
+   real, finalized block hash (serious + provable, not a casino).
+   ============================================================ */
+let drawRunning = false, hashScrambler = null, committedBlock = 0;
+
+function buildReel(participants, winnerName) {
+  const inner = $("reelInner");
+  const CELLS = 44, WIN_AT = 38, CELL_H = 48;
+  let html = "";
+  const pickName = () => participants[Math.random() * participants.length | 0].name;
+  for (let i = 0; i < CELLS; i++) {
+    const isWin = i === WIN_AT;
+    const nm = isWin ? winnerName : pickName();
+    html += `<div class="cell ${isWin ? "win" : ""}">${nm}<span class="tk">#${randHex(3)}</span></div>`;
+  }
+  inner.innerHTML = html;
+  inner.style.transition = "none";
+  inner.style.transform = "translateY(0)";
+  return { WIN_AT, CELL_H };
+}
+
+/* fill the reel with random names + start a gentle looping scroll while
+   we "await finality" — so the reel is never empty between Start and Award */
+function fillReelIdle(participants) {
+  const inner = $("reelInner"), reel = $("reel");
+  const pickName = () => participants[Math.random() * participants.length | 0].name;
+  let html = "";
+  for (let i = 0; i < 24; i++) html += `<div class="cell">${pickName()}<span class="tk">#${randHex(3)}</span></div>`;
+  inner.innerHTML = html + html; // duplicate for seamless loop
+  inner.style.transition = "none";
+  inner.style.transform = "translateY(0)";
+  reel.classList.add("idle-spin");
+}
+
+function commitPhase() {
+  if (drawRunning) return;
+  drawRunning = true;
+  $("reelIdle").style.display = "none";
+  fillReelIdle((!liveMode ? demo.participants : [{ name: randAddr() }, { name: randAddr() }, { name: randAddr() }, { name: randAddr() }]));
+  $("startBtn").disabled = true; $("awardBtn").disabled = false;
+  // step state
+  $("st1").classList.add("on", "done"); $("st2").classList.add("on"); $("st3").classList.remove("on");
+  $("runHint").textContent = "Pool locked. Committed to a future OPN block — waiting for instant finality.";
+  // commit data
+  committedBlock = (liveMode ? 0 : 4820000 + (Math.random() * 9000 | 0));
+  $("cBlock").textContent = "#" + committedBlock.toLocaleString("en-US");
+  const status = $("cStatus"); status.className = "status live";
+  $("cStatusT").textContent = "Awaiting finality…";
+  // scramble the hash while "unfinalized"
+  $("cHash").classList.remove("locked");
+  clearInterval(hashScrambler);
+  hashScrambler = setInterval(() => { $("cHash").textContent = randHash(); }, 70);
+  sndCommit();
+  toast("Draw committed — block " + committedBlock.toLocaleString("en-US"));
+}
+
+function awardPhase(participants) {
+  if (!drawRunning) { toast("Start the draw first"); return; }
+  // pick weighted winner (honest: odds ∝ balance)
+  const total = participants.reduce((s, p) => s + p.bal, 0);
+  let r = Math.random() * total, idx = 0;
+  for (let i = 0; i < participants.length; i++) { r -= participants[i].bal; if (r <= 0) { idx = i; break; } }
+  const winner = participants[idx];
+
+  // freeze the hash — block is final, hash can't be rewritten
+  clearInterval(hashScrambler);
+  const finalHash = randHash();
+  $("cHash").textContent = finalHash;
+  $("cHash").classList.add("locked");
+  $("cStatusT").textContent = "Finalized · entropy locked";
+  $("cStatus").className = "status win";
+  $("st2").classList.add("done"); $("st3").classList.add("on");
+
+  // spin the reel
+  const reel = $("reel"); reel.classList.remove("idle-spin"); reel.classList.add("spinning");
+  const { WIN_AT, CELL_H } = buildReel(participants, winner.name);
+  const target = 70 - WIN_AT * CELL_H; // centre winner cell on the win-line
+  const hype = document.documentElement.dataset.intensity === "hype";
+  const calm = document.documentElement.dataset.intensity === "calm";
+  const dur = calm ? 2600 : hype ? 4200 : 3400;
+  const inner = $("reelInner");
+  // force reflow so the transition reliably triggers (independent of rAF/visibility)
+  inner.getBoundingClientRect();
+  setTimeout(() => {
+    inner.style.transition = `transform ${dur}ms cubic-bezier(.12,.62,.12,1)`;
+    inner.style.transform = `translateY(${target}px)`;
+    sndReel(dur);
+  }, 20);
+  setTimeout(() => {
+    reel.classList.remove("spinning");
+    $("winline").classList.add("locked");
+    onDrawSettled(winner, finalHash);
+  }, dur + 120);
+}
+
+function onDrawSettled(winner, hash) {
+  confetti();
+  sndWin();
+  toast("🏆 " + winner.name + " won " + prizeShown.toLocaleString("en-US", { maximumFractionDigits: 2 }) + " tUSDC");
+  if (!liveMode) demoSettle(winner, hash);
+  drawRunning = false;
+  setTimeout(() => {
+    $("winline").classList.remove("locked");
+    $("reel").classList.remove("idle-spin");
+    $("reelInner").style.transition = "none";
+    $("reelInner").style.transform = "translateY(0)";
+    $("reelInner").innerHTML = "";
+    $("reelIdle").style.display = "grid";
+    $("reel").querySelector(".winline").classList.remove("locked");
+    $("st1").classList.remove("on"); $("st2").classList.remove("on", "done"); $("st3").classList.remove("on");
+    $("st1").classList.remove("done");
+    $("cStatus").className = "status"; $("cStatusT").textContent = "Idle — pool open";
+    $("cHash").classList.remove("locked"); $("cHash").textContent = "—";
+    $("cBlock").textContent = "—";
+    $("startBtn").disabled = false; $("awardBtn").disabled = true;
+    $("runHint").textContent = "Draws are permissionless — any player can run one when the timer hits zero.";
+  }, 5200);
+}
+
+/* ---------------- confetti ---------------- */
+/* ---------------- confetti (casino-grade) ---------------- */
+let confettiRAF = null;
+function darken(hex, f) {
+  const n = parseInt(hex.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+  return `rgb(${r * f | 0},${g * f | 0},${b * f | 0})`;
+}
+function confetti() {
+  if (document.documentElement.dataset.motion === "off") return;
+  const c = $("confetti"), x = c.getContext("2d");
+  const DPR = Math.min(devicePixelRatio || 1, 2), W = innerWidth, H = innerHeight;
+  c.width = W * DPR; c.height = H * DPR; c.style.width = W + "px"; c.style.height = H + "px";
+  x.setTransform(DPR, 0, 0, DPR, 0, 0);
+  const hype = document.documentElement.dataset.intensity === "hype";
+  const PAL = ["#7c5cff", "#a78bfa", "#c9b6ff", "#e9b949", "#f5cf6a", "#ffffff", "#46d369"];
+  const P = [];
+  const TAU = Math.PI * 2;
+  function emit(ox, oy, n, angDeg, spreadDeg, power) {
+    const base = angDeg * Math.PI / 180, spread = spreadDeg * Math.PI / 180;
+    for (let i = 0; i < n; i++) {
+      const a = base + (Math.random() - .5) * spread;
+      const v = power * (.55 + Math.random() * .85);
+      const ribbon = Math.random() < .28, circle = !ribbon && Math.random() < .22;
+      const col = PAL[Math.random() * PAL.length | 0];
+      P.push({
+        x: ox, y: oy, vx: Math.cos(a) * v, vy: Math.sin(a) * v,
+        w: ribbon ? 4 + Math.random() * 3 : 6 + Math.random() * 6,
+        h: ribbon ? 11 + Math.random() * 9 : 6 + Math.random() * 6,
+        col, col2: darken(col, .55), ribbon, circle,
+        tilt: Math.random() * TAU, tiltV: (Math.random() - .5) * .22,
+        wob: Math.random() * TAU, wobV: .07 + Math.random() * .1,
+        drag: .015 + Math.random() * .012, g: .26 + Math.random() * .12,
+        life: 1, decay: .0045 + Math.random() * .004, swing: .4 + Math.random() * .9
+      });
+    }
+  }
+  const N = hype ? 1.5 : 1;
+  // two side cannons firing inward + a centre pop above the orb
+  emit(0, H * .98, Math.round(90 * N), -64, 46, 26);
+  emit(W, H * .98, Math.round(90 * N), -116, 46, 26);
+  emit(W / 2, H * .42, Math.round(70 * N), -90, 130, 13);
+  let last = performance.now();
+  cancelAnimationFrame(confettiRAF);
+  (function loop(now) {
+    const dt = Math.min(2.2, (now - last) / 16.67); last = now;
+    x.clearRect(0, 0, W, H);
+    let alive = 0;
+    for (const p of P) {
+      if (p.life <= 0) continue; alive++;
+      p.vy += p.g * dt;
+      p.vx *= (1 - p.drag * dt); p.vy *= (1 - p.drag * dt);
+      p.vx += Math.sin(p.wob) * p.swing * dt * .12; // air flutter
+      p.x += p.vx * dt; p.y += p.vy * dt;
+      p.tilt += p.tiltV * dt; p.wob += p.wobV * dt;
+      p.life -= p.decay * dt;
+      const flip = Math.cos(p.wob); // -1..1 → simulates a flat piece flipping in 3D
+      x.save();
+      x.translate(p.x, p.y); x.rotate(p.tilt); x.scale(1, Math.max(.12, Math.abs(flip)));
+      x.globalAlpha = Math.max(0, Math.min(1, p.life * 1.4));
+      x.fillStyle = flip >= 0 ? p.col : p.col2;
+      if (p.circle) { x.beginPath(); x.arc(0, 0, p.w / 2, 0, TAU); x.fill(); }
+      else if (p.ribbon) { x.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); }
+      else { x.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); }
+      x.restore();
+    }
+    if (alive > 0) confettiRAF = requestAnimationFrame(loop);
+    else x.clearRect(0, 0, W, H);
+  })(last);
+}
+
+/* ============================================================
+   DEMO MODE
+   ============================================================ */
+const demo = {
+  participants: [
+    { name: "You", bal: 2000, you: true },
+    { name: "0x9c3d…1e7a", bal: 8800 },
+    { name: "0x1af4…77c0", bal: 6450 },
+    { name: "0x55cf…7fb3", bal: 5200 },
+    { name: "0xbda5…197e", bal: 4100 },
+    { name: "0x77e2…0c41", bal: 3300 },
+    { name: "0x2d9a…ff03", bal: 2600 },
+    { name: "0x4b81…9ad2", bal: 1900 },
+    { name: "0x0fc7…3e55", bal: 1500 },
+    { name: "0xa612…b8d0", bal: 1100 },
+    { name: "0x8e30…7712", bal: 900 },
+    { name: "0xc91f…44ab", bal: 700 }
+  ],
+  prize: 312.84,
+  paid: 3184,
+  draws: 12,
+  history: [
+    { id: 12, w: "0x9c3d…1e7a", p: 312.84, t: "20 May", hash: "0x" + randHex(8), fresh: true },
+    { id: 11, w: "0x1af4…77c0", p: 298.10, t: "19 May", hash: "0x" + randHex(8) },
+    { id: 10, w: "0x55cf…7fb3", p: 271.55, t: "18 May", hash: "0x" + randHex(8) },
+    { id: 9, w: "0xbda5…197e", p: 266.02, t: "17 May", hash: "0x" + randHex(8) }
+  ],
+  countdown: 2 * 3600 + 14 * 60 + 33
+};
+
+function renderDemo() {
+  const total = demo.participants.reduce((s, p) => s + p.bal, 0);
+  $("mTotal").textContent = total.toLocaleString("en-US");
+  $("mPart").textContent = demo.participants.length;
+  $("mPaid").textContent = demo.paid.toLocaleString("en-US");
+  $("mDraws").textContent = demo.draws;
+
+  yieldRate = 0.0042;
+  $("dripRate").textContent = "+" + yieldRate.toFixed(4);
+  animatePrize(demo.prize);
+
+  const you = demo.participants.find(p => p.you);
+  $("uBal").textContent = you.bal.toLocaleString("en-US") + " tUSDC";
+  $("uWallet").textContent = "6,000 tUSDC";
+  const share = renderDonut([...demo.participants].sort((a, b) => b.bal - a.bal));
+  $("uOdds").textContent = share.toFixed(1) + "%";
+
+  cad = 24 * 3600;
+  paintCountdown(demo.countdown);
+  renderWinners(demo.history);
+  $("startBtn").disabled = false; $("awardBtn").disabled = true;
+
+  // live demo loops
+  startDrip();
+  setInterval(() => {
+    if (drawRunning) return;
+    if (demo.countdown > 0) demo.countdown--;
+    paintCountdown(demo.countdown);
+  }, 1000);
+}
+
+function renderWinners(rows) {
+  $("wlist").innerHTML = rows.length ? rows.map(r => `
+    <tr class="${r.fresh ? "fresh" : ""}">
+      <td><span class="id">#${r.id}</span></td>
+      <td>${r.fresh ? '<span class="freshdot"></span>' : ""}${r.w}</td>
+      <td class="r"><span class="amt">+${typeof r.p === "number" ? r.p.toFixed(2) : r.p}</span></td>
+      <td class="r"><a class="hashlink" title="${r.hash}">${(r.hash || "").slice(0, 10)}…</a></td>
+      <td class="r"><span class="when">${r.t}</span></td>
+    </tr>`).join("")
+    : '<tr><td colspan="5" class="empty">No draws settled yet — be the first to spin it.</td></tr>';
+}
+
+function demoSettle(winner, hash) {
+  demo.draws++;
+  demo.paid += Math.round(prizeShown);
+  demo.history.forEach(h => h.fresh = false);
+  demo.history.unshift({ id: demo.draws, w: winner.name, p: prizeShown, t: "now", hash, fresh: true });
+  demo.history = demo.history.slice(0, 8);
+  // winner's balance compounds (savings momentum)
+  winner.bal += Math.round(prizeShown);
+  demo.prize = 0; setPrize(0);
+  demo.countdown = cad;
+  $("mDraws").textContent = demo.draws;
+  $("mPaid").textContent = demo.paid.toLocaleString("en-US");
+  const total = demo.participants.reduce((s, p) => s + p.bal, 0);
+  $("mTotal").textContent = total.toLocaleString("en-US");
+  const share = renderDonut([...demo.participants].sort((a, b) => b.bal - a.bal));
+  $("uOdds").textContent = share.toFixed(1) + "%";
+  const you = demo.participants.find(p => p.you);
+  $("uBal").textContent = you.bal.toLocaleString("en-US") + " tUSDC";
+  renderWinners(demo.history);
+}
+
+/* ============================================================
+   LIVE MODE (ethers) — preserves original contract interface
+   ============================================================ */
+async function ensureNetwork() {
+  const want = "0x" + (984).toString(16);
+  const cur = await window.ethereum.request({ method: "eth_chainId" });
+  if (cur === want) return;
+  try { await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: want }] }); }
+  catch (e) {
+    if (e.code === 4902) {
+      await window.ethereum.request({
+        method: "wallet_addEthereumChain", params: [{
+          chainId: want, chainName: "OPN Testnet", nativeCurrency: { name: "OPN", symbol: "OPN", decimals: 18 },
+          rpcUrls: [(cfg && cfg.rpc) || "https://testnet-rpc.iopn.tech"], blockExplorerUrls: ["https://testnet.opnscan.io"]
+        }]
+      });
+    } else throw e;
+  }
+}
+async function connect() {
+  if (!window.ethereum) { toast("No EVM wallet found — install MetaMask."); return; }
+  if (!cfg || !ABIS) { toast("Demo mode — run deploy.js to generate config.js + abi.js for live play."); return; }
+  await ensureNetwork();
+  provider = new ethers.BrowserProvider(window.ethereum);
+  await provider.send("eth_requestAccounts", []);
+  signer = await provider.getSigner(); account = await signer.getAddress();
+  const c = cfg.contracts;
+  usdc = new ethers.Contract(c.MockUSDC, ABIS.MockUSDC, signer);
+  yieldSrc = new ethers.Contract(c.SponsoredYieldSource, ABIS.SponsoredYieldSource, signer);
+  rng = new ethers.Contract(c.FinalityRandomness, ABIS.FinalityRandomness, signer);
+  pool = new ethers.Contract(c.DrawPool, ABIS.DrawPool, signer);
+  cad = Number(await pool.drawInterval()); liveMode = true;
+  $("demoFlag").style.display = "none"; $("connect").textContent = shortAddr(account);
+  $("addrLine").textContent = "POOL " + c.DrawPool.toUpperCase();
+  $("explorerLink").href = cfg.explorer + "/address/" + c.DrawPool;
+  await refresh(); setInterval(() => { if (liveMode) paintCountdown((lastDrawAt + cad) - Math.floor(Date.now() / 1000)); }, 1000);
+}
+async function refresh() {
+  if (!pool) return;
+  const [total, parts, drawCount, prize, bal, odds, wbal, nextAt, active, hLen] = await Promise.all([
+    pool.totalDeposited(), pool.participantCount(), pool.drawCount(), pool.currentPrize(),
+    pool.balanceOf(account), pool.oddsBps(account), usdc.balanceOf(account), pool.nextDrawAt(),
+    pool.drawActive(), pool.historyLength()]);
+  $("mTotal").textContent = fmt(total); $("mPart").textContent = parts.toString(); $("mDraws").textContent = drawCount.toString();
+  animatePrize(Number(ethers.formatUnits(prize, DEC)));
+  $("uBal").textContent = fmt(bal) + " tUSDC";
+  const oddsPct = Number(odds) / 100; $("uOdds").textContent = oddsPct.toFixed(2) + "%";
+  $("uWallet").textContent = fmt(wbal) + " tUSDC";
+  $("donutPct").textContent = oddsPct.toFixed(1) + "%";
+  // single-segment donut for the connected user vs rest of pool
+  renderDonut([{ name: "You", bal: Number(ethers.formatUnits(bal, DEC)), you: true },
+    { name: "Rest of pool", bal: Math.max(0, Number(ethers.formatUnits(total, DEC)) - Number(ethers.formatUnits(bal, DEC))) }]);
+  lastDrawAt = Number(nextAt) - cad;
+  $("st1").classList.toggle("on", active); $("st2").classList.toggle("on", active); $("st3").classList.toggle("on", !active);
+  $("startBtn").disabled = active; $("awardBtn").disabled = !active;
+  $("runHint").textContent = active ? "Draw is live — once the committed block finalizes, anyone can award the prize." : "Draws are permissionless — any player can run one when the timer hits zero.";
+  const n = Number(hLen); let rows = [], paid = 0n;
+  for (let i = n - 1; i >= 0 && i > n - 7; i--) { const d = await pool.history(i); paid += d.prize; rows.push({ id: d.id, w: shortAddr(d.winner), p: Number(ethers.formatUnits(d.prize, DEC)), t: new Date(Number(d.startedAt) * 1000).toLocaleDateString("en-GB", { day: "2-digit", month: "short" }), hash: (d.randomness && d.randomness !== 0n) ? ("0x" + d.randomness.toString(16).padStart(64, "0")) : "", fresh: i === n - 1 }); }
+  if (n > 6) { for (let i = n - 7; i >= 0; i--) { const d = await pool.history(i); paid += d.prize; } }
+  $("mPaid").textContent = fmt(paid);
+  renderWinners(rows);
+  paintCountdown((lastDrawAt + cad) - Math.floor(Date.now() / 1000));
+}
+async function tx(p, msg, onOk) {
+  try { toast(msg + "…"); const t = await p; await t.wait(); toast(msg + " ✓"); if (onOk) onOk(); await refresh(); }
+  catch (e) { console.error(e); toast((e.shortMessage || e.message || "Transaction failed").slice(0, 90)); }
+}
+function parseAmt() { const v = $("amt").value.trim(); if (!v || isNaN(v)) { toast("Enter an amount"); return null; } return ethers.parseUnits(v, DEC); }
+
+/* ---------------- event bindings ---------------- */
+$("connect").onclick = connect;
+const needWallet = () => toast("Connect your wallet first");
+$("heroDeposit").onclick = () => { if (!liveMode) { document.querySelector(".cols").scrollIntoView({ behavior: "smooth", block: "center" }); $("amt").focus(); return; } $("amt").focus(); };
+$("heroFaucet").onclick = () => liveMode ? tx(usdc.faucet(), "Claiming faucet") : toast("Demo mode — faucet is live once contracts are wired.");
+$("faucetBtn").onclick = () => liveMode ? tx(usdc.faucet(), "Claiming faucet") : toast("Demo mode — faucet is live once contracts are wired.");
+$("maxBtn").onclick = async () => { if (!liveMode) { $("amt").value = "6000"; return; } const b = await usdc.balanceOf(account); $("amt").value = ethers.formatUnits(b, DEC); };
+document.querySelectorAll(".preset button").forEach(b => b.onclick = () => { $("amt").value = b.dataset.v; });
+
+$("depositBtn").onclick = async () => {
+  if (!liveMode) { toast("Demo mode — connect a wallet to deposit on testnet."); return; }
+  const a = parseAmt(); if (!a) return;
+  const allow = await usdc.allowance(account, cfg.contracts.DrawPool); if (allow < a) await tx(usdc.approve(cfg.contracts.DrawPool, a), "Approving");
+  await tx(pool.deposit(a), "Depositing", () => { $("amt").value = ""; });
+};
+$("withdrawBtn").onclick = () => { if (!liveMode) { toast("Demo mode — connect a wallet to withdraw."); return; } const a = parseAmt(); if (!a) return; tx(pool.withdraw(a), "Withdrawing", () => { $("amt").value = ""; }); };
+
+$("startBtn").onclick = () => {
+  if (liveMode) return tx(pool.startDraw(), "Starting draw");
+  commitPhase();
+};
+$("awardBtn").onclick = () => {
+  if (liveMode) return tx(pool.award(), "Awarding prize", () => confetti());
+  awardPhase([...demo.participants].sort((a, b) => b.bal - a.bal));
+};
+
+/* ---------------- boot ---------------- */
+renderDemo();
+window.addEventListener("load", () => setTimeout(bootFallbackTweaks, 1500), { once: true });
+if (window.ethereum && cfg && ABIS) { window.ethereum.on?.("accountsChanged", () => location.reload()); window.ethereum.on?.("chainChanged", () => location.reload()); }
+addEventListener("resize", () => { const c = $("confetti"); c.width = innerWidth; c.height = innerHeight; });
+
+</script>
+
+<!-- Tweaks (React powers only the panel overlay) -->
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js"></script>
+<script type="text/babel" data-presets="react">
+
+/* BEGIN USAGE */
+// tweaks-panel.jsx
+// Reusable Tweaks shell + form-control helpers.
+// Exports (to window): useTweaks, TweaksPanel, TweakSection, TweakRow, TweakSlider,
+//   TweakToggle, TweakRadio, TweakSelect, TweakText, TweakNumber, TweakColor, TweakButton.
+//
+// Owns the host protocol (listens for __activate_edit_mode / __deactivate_edit_mode,
+// posts __edit_mode_available / __edit_mode_set_keys / __edit_mode_dismissed) so
+// individual prototypes don't re-roll it. Ships a consistent set of controls so you
+// don't hand-draw <input type="range">, segmented radios, steppers, etc.
+//
+// Usage (in an HTML file that loads React + Babel):
+//
+//   const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+//     "primaryColor": "#D97757",
+//     "palette": ["#D97757", "#29261b", "#f6f4ef"],
+//     "fontSize": 16,
+//     "density": "regular",
+//     "dark": false
+//   }/*EDITMODE-END*/;
+//
+//   function App() {
+//     const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+//     return (
+//       <div style={{ fontSize: t.fontSize, color: t.primaryColor }}>
+//         Hello
+//         <TweaksPanel>
+//           <TweakSection label="Typography" />
+//           <TweakSlider label="Font size" value={t.fontSize} min={10} max={32} unit="px"
+//                        onChange={(v) => setTweak('fontSize', v)} />
+//           <TweakRadio  label="Density" value={t.density}
+//                        options={['compact', 'regular', 'comfy']}
+//                        onChange={(v) => setTweak('density', v)} />
+//           <TweakSection label="Theme" />
+//           <TweakColor  label="Primary" value={t.primaryColor}
+//                        options={['#D97757', '#2A6FDB', '#1F8A5B', '#7A5AE0']}
+//                        onChange={(v) => setTweak('primaryColor', v)} />
+//           <TweakColor  label="Palette" value={t.palette}
+//                        options={[['#D97757', '#29261b', '#f6f4ef'],
+//                                  ['#475569', '#0f172a', '#f1f5f9']]}
+//                        onChange={(v) => setTweak('palette', v)} />
+//           <TweakToggle label="Dark mode" value={t.dark}
+//                        onChange={(v) => setTweak('dark', v)} />
+//         </TweaksPanel>
+//       </div>
+//     );
+//   }
+//
+// TweakRadio is the segmented control for 2–3 short options (auto-falls-back to
+// TweakSelect past ~16/~10 chars per label); reach for TweakSelect directly when
+// options are many or long. For color tweaks always curate 3-4 options rather than
+// a free picker; an option can also be a whole 2–5 color palette (the stored value
+// is the array). The Tweak* controls are a floor, not a ceiling — build custom
+// controls inside the panel if a tweak calls for UI they don't cover.
+/* END USAGE */
+// ─────────────────────────────────────────────────────────────────────────────
+
+const __TWEAKS_STYLE = `
+  .twk-launch{position:fixed;right:16px;bottom:16px;z-index:2147483645;height:32px;padding:0 12px;
+    appearance:none;border:0;border-radius:999px;background:rgba(250,249,247,.88);color:#29261b;
+    -webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%);
+    box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 12px 32px rgba(0,0,0,.16);
+    font:600 11px/1 ui-sans-serif,system-ui,-apple-system,sans-serif;letter-spacing:.08em;text-transform:uppercase;
+    cursor:default}
+  .twk-launch:hover{background:rgba(255,255,255,.96)}
+  .twk-panel{position:fixed;right:16px;bottom:16px;z-index:2147483646;width:280px;
+    max-height:calc(100vh - 32px);display:flex;flex-direction:column;
+    transform:scale(var(--dc-inv-zoom,1));transform-origin:bottom right;
+    background:rgba(250,249,247,.78);color:#29261b;
+    -webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%);
+    border:.5px solid rgba(255,255,255,.6);border-radius:14px;
+    box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 12px 40px rgba(0,0,0,.18);
+    font:11.5px/1.4 ui-sans-serif,system-ui,-apple-system,sans-serif;overflow:hidden}
+  .twk-hd{display:flex;align-items:center;justify-content:space-between;
+    padding:10px 8px 10px 14px;cursor:move;user-select:none}
+  .twk-hd b{font-size:12px;font-weight:600;letter-spacing:.01em}
+  .twk-x{appearance:none;border:0;background:transparent;color:rgba(41,38,27,.55);
+    width:22px;height:22px;border-radius:6px;cursor:default;font-size:13px;line-height:1}
+  .twk-x:hover{background:rgba(0,0,0,.06);color:#29261b}
+  .twk-body{padding:2px 14px 14px;display:flex;flex-direction:column;gap:10px;
+    overflow-y:auto;overflow-x:hidden;min-height:0;
+    scrollbar-width:thin;scrollbar-color:rgba(0,0,0,.15) transparent}
+  .twk-body::-webkit-scrollbar{width:8px}
+  .twk-body::-webkit-scrollbar-track{background:transparent;margin:2px}
+  .twk-body::-webkit-scrollbar-thumb{background:rgba(0,0,0,.15);border-radius:4px;
+    border:2px solid transparent;background-clip:content-box}
+  .twk-body::-webkit-scrollbar-thumb:hover{background:rgba(0,0,0,.25);
+    border:2px solid transparent;background-clip:content-box}
+  .twk-row{display:flex;flex-direction:column;gap:5px}
+  .twk-row-h{flex-direction:row;align-items:center;justify-content:space-between;gap:10px}
+  .twk-lbl{display:flex;justify-content:space-between;align-items:baseline;
+    color:rgba(41,38,27,.72)}
+  .twk-lbl>span:first-child{font-weight:500}
+  .twk-val{color:rgba(41,38,27,.5);font-variant-numeric:tabular-nums}
+
+  .twk-sect{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+    color:rgba(41,38,27,.45);padding:10px 0 0}
+  .twk-sect:first-child{padding-top:0}
+
+  .twk-field{appearance:none;box-sizing:border-box;width:100%;min-width:0;height:26px;padding:0 8px;
+    border:.5px solid rgba(0,0,0,.1);border-radius:7px;
+    background:rgba(255,255,255,.6);color:inherit;font:inherit;outline:none}
+  .twk-field:focus{border-color:rgba(0,0,0,.25);background:rgba(255,255,255,.85)}
+  select.twk-field{padding-right:22px;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='rgba(0,0,0,.5)' d='M0 0h10L5 6z'/></svg>");
+    background-repeat:no-repeat;background-position:right 8px center}
+
+  .twk-slider{appearance:none;-webkit-appearance:none;width:100%;height:4px;margin:6px 0;
+    border-radius:999px;background:rgba(0,0,0,.12);outline:none}
+  .twk-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
+    width:14px;height:14px;border-radius:50%;background:#fff;
+    border:.5px solid rgba(0,0,0,.12);box-shadow:0 1px 3px rgba(0,0,0,.2);cursor:default}
+  .twk-slider::-moz-range-thumb{width:14px;height:14px;border-radius:50%;
+    background:#fff;border:.5px solid rgba(0,0,0,.12);box-shadow:0 1px 3px rgba(0,0,0,.2);cursor:default}
+
+  .twk-seg{position:relative;display:flex;padding:2px;border-radius:8px;
+    background:rgba(0,0,0,.06);user-select:none}
+  .twk-seg-thumb{position:absolute;top:2px;bottom:2px;border-radius:6px;
+    background:rgba(255,255,255,.9);box-shadow:0 1px 2px rgba(0,0,0,.12);
+    transition:left .15s cubic-bezier(.3,.7,.4,1),width .15s}
+  .twk-seg.dragging .twk-seg-thumb{transition:none}
+  .twk-seg button{appearance:none;position:relative;z-index:1;flex:1;border:0;
+    background:transparent;color:inherit;font:inherit;font-weight:500;min-height:22px;
+    border-radius:6px;cursor:default;padding:4px 6px;line-height:1.2;
+    overflow-wrap:anywhere}
+
+  .twk-toggle{position:relative;width:32px;height:18px;border:0;border-radius:999px;
+    background:rgba(0,0,0,.15);transition:background .15s;cursor:default;padding:0}
+  .twk-toggle[data-on="1"]{background:#34c759}
+  .twk-toggle i{position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;
+    background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:transform .15s}
+  .twk-toggle[data-on="1"] i{transform:translateX(14px)}
+
+  .twk-num{display:flex;align-items:center;box-sizing:border-box;min-width:0;height:26px;padding:0 0 0 8px;
+    border:.5px solid rgba(0,0,0,.1);border-radius:7px;background:rgba(255,255,255,.6)}
+  .twk-num-lbl{font-weight:500;color:rgba(41,38,27,.6);cursor:ew-resize;
+    user-select:none;padding-right:8px}
+  .twk-num input{flex:1;min-width:0;height:100%;border:0;background:transparent;
+    font:inherit;font-variant-numeric:tabular-nums;text-align:right;padding:0 8px 0 0;
+    outline:none;color:inherit;-moz-appearance:textfield}
+  .twk-num input::-webkit-inner-spin-button,.twk-num input::-webkit-outer-spin-button{
+    -webkit-appearance:none;margin:0}
+  .twk-num-unit{padding-right:8px;color:rgba(41,38,27,.45)}
+
+  .twk-btn{appearance:none;height:26px;padding:0 12px;border:0;border-radius:7px;
+    background:rgba(0,0,0,.78);color:#fff;font:inherit;font-weight:500;cursor:default}
+  .twk-btn:hover{background:rgba(0,0,0,.88)}
+  .twk-btn.secondary{background:rgba(0,0,0,.06);color:inherit}
+  .twk-btn.secondary:hover{background:rgba(0,0,0,.1)}
+
+  .twk-swatch{appearance:none;-webkit-appearance:none;width:56px;height:22px;
+    border:.5px solid rgba(0,0,0,.1);border-radius:6px;padding:0;cursor:default;
+    background:transparent;flex-shrink:0}
+  .twk-swatch::-webkit-color-swatch-wrapper{padding:0}
+  .twk-swatch::-webkit-color-swatch{border:0;border-radius:5.5px}
+  .twk-swatch::-moz-color-swatch{border:0;border-radius:5.5px}
+
+  .twk-chips{display:flex;gap:6px}
+  .twk-chip{position:relative;appearance:none;flex:1;min-width:0;height:46px;
+    padding:0;border:0;border-radius:6px;overflow:hidden;cursor:default;
+    box-shadow:0 0 0 .5px rgba(0,0,0,.12),0 1px 2px rgba(0,0,0,.06);
+    transition:transform .12s cubic-bezier(.3,.7,.4,1),box-shadow .12s}
+  .twk-chip:hover{transform:translateY(-1px);
+    box-shadow:0 0 0 .5px rgba(0,0,0,.18),0 4px 10px rgba(0,0,0,.12)}
+  .twk-chip[data-on="1"]{box-shadow:0 0 0 1.5px rgba(0,0,0,.85),
+    0 2px 6px rgba(0,0,0,.15)}
+  .twk-chip>span{position:absolute;top:0;bottom:0;right:0;width:34%;
+    display:flex;flex-direction:column;box-shadow:-1px 0 0 rgba(0,0,0,.1)}
+  .twk-chip>span>i{flex:1;box-shadow:0 -1px 0 rgba(0,0,0,.1)}
+  .twk-chip>span>i:first-child{box-shadow:none}
+  .twk-chip svg{position:absolute;top:6px;left:6px;width:13px;height:13px;
+    filter:drop-shadow(0 1px 1px rgba(0,0,0,.3))}
+`;
+
+// ── useTweaks ───────────────────────────────────────────────────────────────
+// Single source of truth for tweak values. setTweak persists via the host
+// (__edit_mode_set_keys → host rewrites the EDITMODE block on disk).
+function useTweaks(defaults) {
+  const [values, setValues] = React.useState(defaults);
+  // Accepts either setTweak('key', value) or setTweak({ key: value, ... }) so a
+  // useState-style call doesn't write a "[object Object]" key into the persisted
+  // JSON block.
+  const setTweak = React.useCallback((keyOrEdits, val) => {
+    const edits = typeof keyOrEdits === 'object' && keyOrEdits !== null
+      ? keyOrEdits : { [keyOrEdits]: val };
+    setValues((prev) => ({ ...prev, ...edits }));
+    window.parent.postMessage({ type: '__edit_mode_set_keys', edits }, '*');
+    // Same-window signal so in-page listeners (deck-stage rail thumbnails)
+    // can react — the parent message only reaches the host, not peers.
+    window.dispatchEvent(new CustomEvent('tweakchange', { detail: edits }));
+  }, []);
+  return [values, setTweak];
+}
+
+// ── TweaksPanel ─────────────────────────────────────────────────────────────
+// Floating shell. Registers the protocol listener BEFORE announcing
+// availability — if the announce ran first, the host's activate could land
+// before our handler exists and the toolbar toggle would silently no-op.
+// The close button posts __edit_mode_dismissed so the host's toolbar toggle
+// flips off in lockstep; the host echoes __deactivate_edit_mode back which
+// is what actually hides the panel.
+function TweaksPanel({ title = 'Tweaks', children }) {
+  const [open, setOpen] = React.useState(false);
+  const dragRef = React.useRef(null);
+  const offsetRef = React.useRef({ x: 16, y: 16 });
+  const PAD = 16;
+  const params = new URLSearchParams(window.location.search);
+  const isLocalHost = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+  const allowSelfOpen = window.location.protocol === 'file:' || isLocalHost || params.get('tweaks') === '1';
+
+  const clampToViewport = React.useCallback(() => {
+    const panel = dragRef.current;
+    if (!panel) return;
+    const w = panel.offsetWidth, h = panel.offsetHeight;
+    const maxRight = Math.max(PAD, window.innerWidth - w - PAD);
+    const maxBottom = Math.max(PAD, window.innerHeight - h - PAD);
+    offsetRef.current = {
+      x: Math.min(maxRight, Math.max(PAD, offsetRef.current.x)),
+      y: Math.min(maxBottom, Math.max(PAD, offsetRef.current.y)),
+    };
+    panel.style.right = offsetRef.current.x + 'px';
+    panel.style.bottom = offsetRef.current.y + 'px';
+  }, []);
+
+  React.useEffect(() => {
+    if (!open) return;
+    clampToViewport();
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', clampToViewport);
+      return () => window.removeEventListener('resize', clampToViewport);
+    }
+    const ro = new ResizeObserver(clampToViewport);
+    ro.observe(document.documentElement);
+    return () => ro.disconnect();
+  }, [open, clampToViewport]);
+
+  React.useEffect(() => {
+    const onMsg = (e) => {
+      const t = e?.data?.type;
+      if (t === '__activate_edit_mode') setOpen(true);
+      else if (t === '__deactivate_edit_mode') setOpen(false);
+    };
+    window.addEventListener('message', onMsg);
+    window.parent.postMessage({ type: '__edit_mode_available' }, '*');
+    return () => window.removeEventListener('message', onMsg);
+  }, []);
+
+  React.useEffect(() => {
+    if (!allowSelfOpen) return;
+    if (params.get('tweaks') === '1' || window.location.protocol === 'file:') setOpen(true);
+    const onKey = (e) => {
+      if (e.key.toLowerCase() !== 't' || !(e.metaKey || e.ctrlKey || e.shiftKey)) return;
+      e.preventDefault();
+      setOpen((v) => !v);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [allowSelfOpen]);
+
+  const dismiss = () => {
+    setOpen(false);
+    window.parent.postMessage({ type: '__edit_mode_dismissed' }, '*');
+  };
+
+  const onDragStart = (e) => {
+    const panel = dragRef.current;
+    if (!panel) return;
+    const r = panel.getBoundingClientRect();
+    const sx = e.clientX, sy = e.clientY;
+    const startRight = window.innerWidth - r.right;
+    const startBottom = window.innerHeight - r.bottom;
+    const move = (ev) => {
+      offsetRef.current = {
+        x: startRight - (ev.clientX - sx),
+        y: startBottom - (ev.clientY - sy),
+      };
+      clampToViewport();
+    };
+    const up = () => {
+      window.removeEventListener('mousemove', move);
+      window.removeEventListener('mouseup', up);
+    };
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+  };
+
+  if (!open && !allowSelfOpen) return null;
+  return (
+    <>
+      <style>{__TWEAKS_STYLE}</style>
+      {!open && allowSelfOpen && (
+        <button type="button" className="twk-launch" onClick={() => setOpen(true)}>
+          Tweaks
+        </button>
+      )}
+      {open && (
+      <div ref={dragRef} className="twk-panel" data-omelette-chrome=""
+           style={{ right: offsetRef.current.x, bottom: offsetRef.current.y }}>
+        <div className="twk-hd" onMouseDown={onDragStart}>
+          <b>{title}</b>
+          <button className="twk-x" aria-label="Close tweaks"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={dismiss}>✕</button>
+        </div>
+        <div className="twk-body">
+          {children}
+        </div>
+      </div>
+      )}
+    </>
+  );
+}
+
+// ── Layout helpers ──────────────────────────────────────────────────────────
+
+function TweakSection({ label, children }) {
+  return (
+    <>
+      <div className="twk-sect">{label}</div>
+      {children}
+    </>
+  );
+}
+
+function TweakRow({ label, value, children, inline = false }) {
+  return (
+    <div className={inline ? 'twk-row twk-row-h' : 'twk-row'}>
+      <div className="twk-lbl">
+        <span>{label}</span>
+        {value != null && <span className="twk-val">{value}</span>}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+// ── Controls ────────────────────────────────────────────────────────────────
+
+function TweakSlider({ label, value, min = 0, max = 100, step = 1, unit = '', onChange }) {
+  return (
+    <TweakRow label={label} value={`${value}${unit}`}>
+      <input type="range" className="twk-slider" min={min} max={max} step={step}
+             value={value} onChange={(e) => onChange(Number(e.target.value))} />
+    </TweakRow>
+  );
+}
+
+function TweakToggle({ label, value, onChange }) {
+  return (
+    <div className="twk-row twk-row-h">
+      <div className="twk-lbl"><span>{label}</span></div>
+      <button type="button" className="twk-toggle" data-on={value ? '1' : '0'}
+              role="switch" aria-checked={!!value}
+              onClick={() => onChange(!value)}><i /></button>
+    </div>
+  );
+}
+
+function TweakRadio({ label, value, options, onChange }) {
+  const trackRef = React.useRef(null);
+  const [dragging, setDragging] = React.useState(false);
+  // The active value is read by pointer-move handlers attached for the lifetime
+  // of a drag — ref it so a stale closure doesn't fire onChange for every move.
+  const valueRef = React.useRef(value);
+  valueRef.current = value;
+
+  // Segments wrap mid-word once per-segment width runs out. The track is
+  // ~248px (280 panel − 28 body pad − 4 seg pad), each button loses 12px
+  // to its own padding, and 11.5px system-ui averages ~6.3px/char — so 2
+  // options fit ~16 chars each, 3 fit ~10. Past that (or >3 options), fall
+  // back to a dropdown rather than wrap.
+  const labelLen = (o) => String(typeof o === 'object' ? o.label : o).length;
+  const maxLen = options.reduce((m, o) => Math.max(m, labelLen(o)), 0);
+  const fitsAsSegments = maxLen <= ({ 2: 16, 3: 10 }[options.length] ?? 0);
+  if (!fitsAsSegments) {
+    // <select> emits strings — map back to the original option value so the
+    // fallback stays type-preserving (numbers, booleans) like the segment path.
+    const resolve = (s) => {
+      const m = options.find((o) => String(typeof o === 'object' ? o.value : o) === s);
+      return m === undefined ? s : typeof m === 'object' ? m.value : m;
+    };
+    return <TweakSelect label={label} value={value} options={options}
+                        onChange={(s) => onChange(resolve(s))} />;
+  }
+  const opts = options.map((o) => (typeof o === 'object' ? o : { value: o, label: o }));
+  const idx = Math.max(0, opts.findIndex((o) => o.value === value));
+  const n = opts.length;
+
+  const segAt = (clientX) => {
+    const r = trackRef.current.getBoundingClientRect();
+    const inner = r.width - 4;
+    const i = Math.floor(((clientX - r.left - 2) / inner) * n);
+    return opts[Math.max(0, Math.min(n - 1, i))].value;
+  };
+
+  const onPointerDown = (e) => {
+    setDragging(true);
+    const v0 = segAt(e.clientX);
+    if (v0 !== valueRef.current) onChange(v0);
+    const move = (ev) => {
+      if (!trackRef.current) return;
+      const v = segAt(ev.clientX);
+      if (v !== valueRef.current) onChange(v);
+    };
+    const up = () => {
+      setDragging(false);
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+
+  return (
+    <TweakRow label={label}>
+      <div ref={trackRef} role="radiogroup" onPointerDown={onPointerDown}
+           className={dragging ? 'twk-seg dragging' : 'twk-seg'}>
+        <div className="twk-seg-thumb"
+             style={{ left: `calc(2px + ${idx} * (100% - 4px) / ${n})`,
+                      width: `calc((100% - 4px) / ${n})` }} />
+        {opts.map((o) => (
+          <button key={o.value} type="button" role="radio" aria-checked={o.value === value}>
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </TweakRow>
+  );
+}
+
+function TweakSelect({ label, value, options, onChange }) {
+  return (
+    <TweakRow label={label}>
+      <select className="twk-field" value={value} onChange={(e) => onChange(e.target.value)}>
+        {options.map((o) => {
+          const v = typeof o === 'object' ? o.value : o;
+          const l = typeof o === 'object' ? o.label : o;
+          return <option key={v} value={v}>{l}</option>;
+        })}
+      </select>
+    </TweakRow>
+  );
+}
+
+function TweakText({ label, value, placeholder, onChange }) {
+  return (
+    <TweakRow label={label}>
+      <input className="twk-field" type="text" value={value} placeholder={placeholder}
+             onChange={(e) => onChange(e.target.value)} />
+    </TweakRow>
+  );
+}
+
+function TweakNumber({ label, value, min, max, step = 1, unit = '', onChange }) {
+  const clamp = (n) => {
+    if (min != null && n < min) return min;
+    if (max != null && n > max) return max;
+    return n;
+  };
+  const startRef = React.useRef({ x: 0, val: 0 });
+  const onScrubStart = (e) => {
+    e.preventDefault();
+    startRef.current = { x: e.clientX, val: value };
+    const decimals = (String(step).split('.')[1] || '').length;
+    const move = (ev) => {
+      const dx = ev.clientX - startRef.current.x;
+      const raw = startRef.current.val + dx * step;
+      const snapped = Math.round(raw / step) * step;
+      onChange(clamp(Number(snapped.toFixed(decimals))));
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+  return (
+    <div className="twk-num">
+      <span className="twk-num-lbl" onPointerDown={onScrubStart}>{label}</span>
+      <input type="number" value={value} min={min} max={max} step={step}
+             onChange={(e) => onChange(clamp(Number(e.target.value)))} />
+      {unit && <span className="twk-num-unit">{unit}</span>}
+    </div>
+  );
+}
+
+// Relative-luminance contrast pick — checkmarks drawn over a swatch need to
+// read on both #111 and #fafafa without per-option configuration. Hex input
+// only (#rgb / #rrggbb); named or rgb()/hsl() colors fall through to "light".
+function __twkIsLight(hex) {
+  const h = String(hex).replace('#', '');
+  const x = h.length === 3 ? h.replace(/./g, (c) => c + c) : h.padEnd(6, '0');
+  const n = parseInt(x.slice(0, 6), 16);
+  if (Number.isNaN(n)) return true;
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  return r * 299 + g * 587 + b * 114 > 148000;
+}
+
+const __TwkCheck = ({ light }) => (
+  <svg viewBox="0 0 14 14" aria-hidden="true">
+    <path d="M3 7.2 5.8 10 11 4.2" fill="none" strokeWidth="2.2"
+          strokeLinecap="round" strokeLinejoin="round"
+          stroke={light ? 'rgba(0,0,0,.78)' : '#fff'} />
+  </svg>
+);
+
+// TweakColor — curated color/palette picker. Each option is either a single
+// hex string or an array of 1-5 hex strings; the card adapts — a lone color
+// renders solid, a palette renders colors[0] as the hero (left ~2/3) with the
+// rest stacked in a sharp column on the right. onChange emits the
+// option in the shape it was passed (string stays string, array stays array).
+// Without options it falls back to the native color input for back-compat.
+function TweakColor({ label, value, options, onChange }) {
+  if (!options || !options.length) {
+    return (
+      <div className="twk-row twk-row-h">
+        <div className="twk-lbl"><span>{label}</span></div>
+        <input type="color" className="twk-swatch" value={value}
+               onChange={(e) => onChange(e.target.value)} />
+      </div>
+    );
+  }
+  // Native <input type=color> emits lowercase hex per the HTML spec, so
+  // compare case-insensitively. String() guards JSON.stringify(undefined),
+  // which returns the primitive undefined (no .toLowerCase).
+  const key = (o) => String(JSON.stringify(o)).toLowerCase();
+  const cur = key(value);
+  return (
+    <TweakRow label={label}>
+      <div className="twk-chips" role="radiogroup">
+        {options.map((o, i) => {
+          const colors = Array.isArray(o) ? o : [o];
+          const [hero, ...rest] = colors;
+          const sup = rest.slice(0, 4);
+          const on = key(o) === cur;
+          return (
+            <button key={i} type="button" className="twk-chip" role="radio"
+                    aria-checked={on} data-on={on ? '1' : '0'}
+                    aria-label={colors.join(', ')} title={colors.join(' · ')}
+                    style={{ background: hero }}
+                    onClick={() => onChange(o)}>
+              {sup.length > 0 && (
+                <span>
+                  {sup.map((c, j) => <i key={j} style={{ background: c }} />)}
+                </span>
+              )}
+              {on && <__TwkCheck light={__twkIsLight(hero)} />}
+            </button>
+          );
+        })}
+      </div>
+    </TweakRow>
+  );
+}
+
+function TweakButton({ label, onClick, secondary = false }) {
+  return (
+    <button type="button" className={secondary ? 'twk-btn secondary' : 'twk-btn'}
+            onClick={onClick}>{label}</button>
+  );
+}
+
+Object.assign(window, {
+  useTweaks, TweaksPanel, TweakSection, TweakRow,
+  TweakSlider, TweakToggle, TweakRadio, TweakSelect,
+  TweakText, TweakNumber, TweakColor, TweakButton,
+});
+
+</script>
+<script type="text/babel" data-presets="react">
+/* Tweaks panel for DrawPool. React powers only this overlay;
+   on every change it calls window.applyTweaks(t) to drive the
+   vanilla app (intensity, motion, optional readouts). */
+const { useEffect } = React;
+
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "intensity": "calm",
+  "sound": true,
+  "yieldTicker": false,
+  "fairBlock": false,
+  "reduceMotion": false
+}/*EDITMODE-END*/;
+
+function DrawPoolTweaks() {
+  const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+  useEffect(() => { if (window.applyTweaks) window.applyTweaks(t); }, [t]);
+  return (
+    <TweaksPanel>
+      <TweakSection label="Gambling energy" />
+      <TweakRadio label="Intensity" value={t.intensity}
+        options={["calm", "balanced", "hype"]}
+        onChange={(v) => setTweak("intensity", v)} />
+      <p style={{ margin: "0 0 2px", fontSize: 10.5, lineHeight: 1.45, color: "rgba(41,38,27,.5)" }}>
+        calm = restrained DeFi · hype = slot-machine pulse, faster reel, bigger win.
+      </p>
+      <TweakSection label="Readouts" />
+      <TweakToggle label="Draw sound" value={t.sound}
+        onChange={(v) => setTweak("sound", v)} />
+      <TweakToggle label="Live yield ticker" value={t.yieldTicker}
+        onChange={(v) => setTweak("yieldTicker", v)} />
+      <TweakToggle label="“Provably fair” block" value={t.fairBlock}
+        onChange={(v) => setTweak("fairBlock", v)} />
+      <TweakSection label="Accessibility" />
+      <TweakToggle label="Reduce motion" value={t.reduceMotion}
+        onChange={(v) => setTweak("reduceMotion", v)} />
+    </TweaksPanel>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("tweaks-root")).render(<DrawPoolTweaks />);
+window.__DRAWPOOL_TWEAKS_BOOTED = true;
+
+</script>
+</body>
+</html>
