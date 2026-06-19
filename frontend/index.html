@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>DrawPool — no-loss prize pool on OPN Chain</title>
+<title>DrawPool — no-loss savings pool on OPN Chain</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
@@ -34,7 +34,7 @@
     </div>
   </nav>
 
-  <!-- jackpot board -->
+  <!-- hero board -->
   <section class="board">
     <div class="orbcell">
       <div class="orb">
@@ -63,14 +63,14 @@
         </svg>
         <div class="core">
           <div>
-            <div class="plabel">Current jackpot</div>
+            <div class="plabel">Next yield prize</div>
             <div class="num tnum"><span id="prize">0</span></div>
             <div class="cur">tUSDC</div>
           </div>
         </div>
       </div>
       <div class="drip" id="drip" style="display:none">
-        <span class="arrow">▲</span> yield flowing in <b id="dripRate">+0.0042</b> tUSDC/s
+        <span class="arrow">▲</span> yield accruing live <b id="dripRate">+0.0042</b> tUSDC/s
       </div>
       <div class="clk" id="clk">
         <div class="timer" id="cdT">--:--:--</div>
@@ -79,27 +79,45 @@
     </div>
     <div class="info">
       <div class="row1">
-        <span class="badge">No-loss</span>
-        <span class="lbl">winner takes the entire pool's yield</span>
+        <span class="badge">No-loss savings</span>
+        <span class="lbl">deposit tUSDC, keep 100% of principal</span>
       </div>
-      <div class="tagline">Deposit stablecoins, keep <b>every cent</b> of your principal. One depositor takes the whole pool's yield each draw — your odds scale with your balance.</div>
+      <h1 class="hero-title">No-loss savings pool on OPN.</h1>
+      <div class="tagline">Deposit tUSDC, keep <b>100% of your principal</b>, and compete for the pool's yield. One saver wins each draw, and your odds scale with your balance.</div>
       <div class="cta">
-        <button class="btn gold" id="heroDeposit">Deposit</button>
-        <button class="btn ghost" id="heroFaucet">Get test tUSDC</button>
+        <button class="btn gold" id="heroDeposit">Deposit tUSDC</button>
+        <button class="btn ghost" id="heroFaucet">Get 1,000 test tUSDC</button>
+      </div>
+      <div class="how3" aria-label="How DrawPool works">
+        <div class="h3i">
+          <span class="n">01</span>
+          <strong>Deposit</strong>
+          <p>Add tUSDC to the pool. Your principal stays withdrawable 1:1.</p>
+        </div>
+        <div class="h3i">
+          <span class="n">02</span>
+          <strong>Yield accrues</strong>
+          <p>The pool grows a yield prize between draws without touching principal.</p>
+        </div>
+        <div class="h3i">
+          <span class="n">03</span>
+          <strong>One saver wins</strong>
+          <p>The contract pays the whole yield prize to one depositor, weighted by balance.</p>
+        </div>
       </div>
       <!-- compact provably-fair strip -->
       <div class="fair" id="fair" style="display:none">
         <div class="fi">
+          <div class="ft"><span class="ic"></span>Provably fair on OPN</div>
+          <div class="fd">The draw commits to a future block before anyone knows the result.</div>
+        </div>
+        <div class="fi">
           <div class="ft"><span class="ic"></span>Instant finality</div>
-          <div class="fd">Tendermint BFT — the committed block is final the instant it's produced.</div>
+          <div class="fd">Once OPN finalizes the block, its hash is fixed. The draw cannot be re-rolled.</div>
         </div>
         <div class="fi">
-          <div class="ft"><span class="ic"></span>No reorgs</div>
-          <div class="fd">Its hash can't be rewritten after the fact, so the draw can't be re-rolled.</div>
-        </div>
-        <div class="fi">
-          <div class="ft"><span class="ic"></span>Future-block entropy</div>
-          <div class="fd">Randomness derives from a block nobody can predict at commit time. <a id="fairLink" href="https://testnet.opnscan.io" target="_blank">Verify →</a></div>
+          <div class="ft"><span class="ic"></span>Verify on-chain</div>
+          <div class="fd">See the committed block, final hash, and winner outcome on OPN Scan. <a id="fairLink" href="https://testnet.opnscan.io" target="_blank">Verify →</a></div>
         </div>
       </div>
     </div>
@@ -107,9 +125,9 @@
 
   <!-- stat strip -->
   <section class="strip">
-    <div><div class="lbl">Pool size</div><div class="v violet" id="mTotal">—</div></div>
+    <div><div class="lbl">Total deposits</div><div class="v violet" id="mTotal">—</div></div>
     <div><div class="lbl">Players</div><div class="v" id="mPart">—</div></div>
-    <div><div class="lbl">Prizes paid</div><div class="v gold" id="mPaid">—</div></div>
+    <div><div class="lbl">Yield paid</div><div class="v gold" id="mPaid">—</div></div>
     <div><div class="lbl">Draws settled</div><div class="v" id="mDraws">—</div></div>
   </section>
 
@@ -117,7 +135,7 @@
   <div class="cols">
     <div class="card">
       <h2>Your position &amp; odds</h2>
-      <div class="note">Win chance is your share of the pool — principal is always withdrawable 1:1.</div>
+      <div class="note">Your win chance equals your share of deposits. Principal stays withdrawable 1:1.</div>
       <div class="pos">
         <div class="donut">
           <svg id="donutSvg" viewBox="0 0 152 152" width="152" height="152"></svg>
@@ -139,7 +157,7 @@
 
     <div class="card">
       <h2>Deposit / Withdraw</h2>
-      <div class="note">Approve once, then deposit. The more you pool, the better your odds — and you can only ever win.</div>
+      <div class="note">Approve once, then deposit tUSDC. Your principal stays yours, only the yield is awarded.</div>
       <div class="ifield">
         <input id="amt" type="text" inputmode="decimal" placeholder="0.00" />
         <span class="suffix">tUSDC</span>
@@ -155,26 +173,26 @@
         <button class="btn" id="depositBtn">Deposit</button>
         <button class="btn ghost" id="withdrawBtn">Withdraw</button>
       </div>
-      <div class="faucet">No funds yet? <a id="faucetBtn">Claim 1,000 tUSDC from the faucet</a></div>
+      <div class="faucet">No funds yet? <a id="faucetBtn">Claim 1,000 test tUSDC from the faucet</a></div>
     </div>
   </div>
 
   <!-- draw machine + slot reel -->
   <section class="machine">
     <div class="mhead">
-      <span class="ttl">Draw machine — anyone can spin it, nobody can predict it</span>
+      <span class="ttl">How the savings draw works</span>
       <span class="run">
-        <button class="btn" id="startBtn">Start draw</button>
-        <button class="btn gold" id="awardBtn">Award prize</button>
+        <button class="btn" id="startBtn">Commit draw</button>
+        <button class="btn gold" id="awardBtn">Settle draw</button>
       </span>
     </div>
     <div class="msteps">
-      <div class="ms" id="st1"><div class="idx">01 / COMMIT</div><div class="st">Lock &amp; commit</div>
-        <div class="sd">The pool locks and commits to a future OPN block. Nobody can react to the outcome.</div></div>
+      <div class="ms" id="st1"><div class="idx">01 / COMMIT</div><div class="st">Lock the pool</div>
+        <div class="sd">The contract locks deposits and commits to a future OPN block before the result is known.</div></div>
       <div class="ms" id="st2"><div class="idx">02 / FINALIZE</div><div class="st">Block finalizes</div>
-        <div class="sd">A few ~1s blocks later it's final forever — no reorgs on OPN, so the hash can't be rigged.</div></div>
-      <div class="ms" id="st3"><div class="idx">03 / AWARD</div><div class="st">Winner drawn</div>
-        <div class="sd">Yield is harvested, a balance-weighted winner is selected, and the prize compounds in.</div></div>
+        <div class="sd">A few ~1s blocks later OPN finalizes it, and the block hash becomes immutable.</div></div>
+      <div class="ms" id="st3"><div class="idx">03 / SETTLE</div><div class="st">Winner receives yield</div>
+        <div class="sd">The contract harvests yield, selects a balance-weighted winner, and compounds the payout.</div></div>
     </div>
 
     <div class="reel-wrap">
@@ -183,33 +201,33 @@
         <div class="mask-bot"></div>
         <div class="winline" id="winline"></div>
         <div class="strip-inner" id="reelInner"></div>
-        <div class="idle" id="reelIdle">Press <b style="color:var(--violet-br)">Start draw</b> to commit to a block, then <b style="color:var(--gold-br)">Award prize</b> to spin the weighted winner.</div>
+        <div class="idle" id="reelIdle">Press <b style="color:var(--violet-br)">Commit draw</b> to lock in a future block, then <b style="color:var(--gold-br)">Settle draw</b> once OPN finalizes it.</div>
       </div>
       <div class="commit">
-        <div class="crow"><span class="ck">Committed block</span><span class="cv" id="cBlock">—</span></div>
-        <div class="crow"><span class="ck">Block hash (entropy source)</span><span class="cv hash" id="cHash">—</span></div>
-        <div class="status" id="cStatus"><span class="sd"></span><span id="cStatusT">Idle — pool open</span></div>
+        <div class="crow"><span class="ck">Committed future block</span><span class="cv" id="cBlock">—</span></div>
+        <div class="crow"><span class="ck">Finalized block hash</span><span class="cv hash" id="cHash">—</span></div>
+        <div class="status" id="cStatus"><span class="sd"></span><span id="cStatusT">Pool open, waiting for the next draw</span></div>
       </div>
     </div>
-    <div class="mhint" id="runHint">Draws are permissionless — any player can run one when the timer hits zero.</div>
+    <div class="mhint" id="runHint">Anyone can commit or settle a draw once the timer allows it.</div>
     <div class="whoruns">
       <span class="wlabel">Who runs draws?</span>
-      <span class="wtext">Permissionless — <b>any player</b> can trigger a draw once the timer hits zero, or a <b>keeper bot</b> fires it automatically. The contract picks the winner; nobody can rig or skip it.</span>
+      <span class="wtext">Permissionless. <b>Any player</b> can trigger the draw once the timer hits zero, or a <b>keeper bot</b> can do it automatically. The contract picks the winner, so no operator can rig or skip the outcome.</span>
     </div>
   </section>
 
   <!-- winners -->
   <section class="winners">
-    <div class="wh"><span class="lbl">Recent winners</span><a id="explorerLink" target="_blank" class="lbl" style="color:var(--violet-br)">Explorer →</a></div>
+    <div class="wh"><span class="lbl">Recent draws</span><a id="explorerLink" href="https://testnet.opnscan.io" target="_blank" class="lbl" style="color:var(--violet-br)">Open on explorer →</a></div>
     <table>
-      <thead><tr><th>Draw</th><th>Winner</th><th class="r">Prize</th><th class="r">Entropy</th><th class="r">Date</th></tr></thead>
+      <thead><tr><th>Draw</th><th>Winner</th><th class="r">Yield won</th><th class="r">Final hash</th><th class="r">Date</th></tr></thead>
       <tbody id="wlist"></tbody>
     </table>
   </section>
 
   <footer>
     <span>DRAWPOOL · SEASON 1 — DEFI &amp; OPEN FINANCE · IOPN BUILDERS</span>
-    <span id="addrLine">CONNECT A WALLET TO PLAY ON OPN TESTNET</span>
+    <span id="addrLine">CONNECT A WALLET TO DEPOSIT ON OPN TESTNET</span>
   </footer>
 </div>
 

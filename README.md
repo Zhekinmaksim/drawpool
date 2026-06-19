@@ -1,8 +1,13 @@
 # DrawPool
 
+**No-loss prize savings on OPN Chain.** Deposit tUSDC, keep 100% of your principal, and route the pool's yield to one saver each draw, with odds proportional to balance.
+
+![DrawPool hero](./docs/drawpool-hero.png)
+
 ## Demo
 
 - Live app: [drawpool.xyz](https://drawpool.xyz)
+- Direct Vercel deployment: [drawpool-phi.vercel.app](https://drawpool-phi.vercel.app/)
 - Self-contained preview artifact: [`drawpool-preview.html`](./drawpool-preview.html)
 
 ## Contracts
@@ -20,10 +25,13 @@
 2. Confirm the contract has live activity, including the first `deposit(100 tUSDC)` transaction: [`0xafe07bd948046ec8fedaf16b19ca8765500df985729c2f68c4f2dbd1f07b98d9`](https://testnet.opnscan.io/tx/0xafe07bd948046ec8fedaf16b19ca8765500df985729c2f68c4f2dbd1f07b98d9).
 3. Compare the on-chain addresses with [`frontend/config.js`](./frontend/config.js) and [`contracts/deployment.json`](./contracts/deployment.json).
 
-**No-loss prize savings on OPN Chain.** Deposit a stablecoin, keep every cent of
-your principal, and route the entire pool's yield to one depositor each draw,
-with odds proportional to balance. Built for **IOPn Builders, Season 1: DeFi &
-Open Finance**.
+## How it works in 3 steps
+
+1. Deposit tUSDC into the pool. Principal stays withdrawable 1:1.
+2. Yield accrues on top of pooled principal and becomes the next draw's payout.
+3. The contract commits to a future OPN block, then pays the full yield prize to one saver with balance-weighted odds.
+
+Built for **IOPn Builders, Season 1: DeFi & Open Finance**.
 
 > Principal is always withdrawable 1:1. You can only ever win, never lose.
 
@@ -110,7 +118,7 @@ backend or randomness backend is upgraded — that is the whole point of the sea
 | --- | --- |
 | **OPN Chain Integration (30%)** | Randomness is sound *only* on OPN's instant-finality/no-reorg consensus; fast finality enables the short draw lock. Deployed and transacting on OPN testnet (chain 984). |
 | **Technical Quality (25%)** | Solidity 0.8.30, OpenZeppelin, interface-segregated upgrade seams, `ReentrancyGuard`, custom errors. Full lifecycle + statistical test suite, all passing. |
-| **Product & UX (20%)** | A real consumer game (you can only win), in OPN's brand palette — violet-on-dark with a gold jackpot accent, an animated prize orb, a countdown ring, balance-weighted "ticket" odds, a live winners feed, and confetti on award. One-file deploy, no build step. |
+| **Product & UX (20%)** | A real consumer savings product with instant comprehension: deposit, keep principal, win yield. The UI shows the next yield prize, balance-weighted odds, recent draws, and verifiable block-finality proof in one screen. |
 | **Innovation (15%)** | First no-loss prize-savings primitive on OPN, and a randomness construction that turns OPN's finality into a feature instead of working around an EVM limitation. |
 | **Builder Commitment (10%)** | Documented VRF migration path tied to OPN's own oracle roadmap; clean seams signal a maintainable, long-term build. |
 
@@ -151,11 +159,11 @@ python3 -m http.server 8080     # or deploy the folder to Vercel / Netlify
 ```
 
 Open <http://localhost:8080>. Before contracts are wired it runs in demo mode
-(flagged "demo") with a full self-contained simulation — 3D faceted jackpot gem,
-animated odds donut, a provably-fair slot-reel draw that locks onto a finalized
-block hash, and synthesized casino sound. Once `config.js`/`abi.js` exist and a
-wallet connects, the same handlers run live against OPN testnet: faucet, deposit,
-withdraw, start draw, award, balance-weighted winners, and the on-chain entropy
+(flagged "demo") with a full self-contained simulation: animated yield-prize orb,
+odds donut, a draw lifecycle reel anchored to a finalized block hash, and
+synthesized sound. Once `config.js`/`abi.js` exist and a wallet connects, the
+same handlers run live against OPN testnet: faucet, deposit, withdraw, commit
+draw, settle draw, balance-weighted winners, and the on-chain entropy
 (`Draw.randomness`) shown per draw.
 
 The optional tweaks panel is available automatically on `localhost` / `file://`,
