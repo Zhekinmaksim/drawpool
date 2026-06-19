@@ -21,9 +21,9 @@
 3. Compare the on-chain addresses with [`frontend/config.js`](./frontend/config.js) and [`contracts/deployment.json`](./contracts/deployment.json).
 
 **No-loss prize savings on OPN Chain.** Deposit a stablecoin, keep every cent of
-your principal, and the entire pool's yield is awarded to one depositor each draw,
-with odds proportional to your balance. The prize auto-compounds into the winner's
-deposit. Built for **IOPn Builders — Season 1, DeFi & Open Finance**.
+your principal, and route the entire pool's yield to one depositor each draw,
+with odds proportional to balance. Built for **IOPn Builders, Season 1: DeFi &
+Open Finance**.
 
 > Principal is always withdrawable 1:1. You can only ever win, never lose.
 
@@ -113,31 +113,6 @@ backend or randomness backend is upgraded — that is the whole point of the sea
 | **Product & UX (20%)** | A real consumer game (you can only win), in OPN's brand palette — violet-on-dark with a gold jackpot accent, an animated prize orb, a countdown ring, balance-weighted "ticket" odds, a live winners feed, and confetti on award. One-file deploy, no build step. |
 | **Innovation (15%)** | First no-loss prize-savings primitive on OPN, and a randomness construction that turns OPN's finality into a feature instead of working around an EVM limitation. |
 | **Builder Commitment (10%)** | Documented VRF migration path tied to OPN's own oracle roadmap; clean seams signal a maintainable, long-term build. |
-
----
-
-## Live Deployment
-
-The current public OPN testnet deployment is:
-
-| Contract | Address |
-| --- | --- |
-| `DrawPool` | [`0x70FE611Eded4e930f361e298C1B222E12088c573`](https://testnet.opnscan.io/address/0x70FE611Eded4e930f361e298C1B222E12088c573) |
-| `MockUSDC` | [`0x657B76E29a81F22C66155acCb1fAc7F0B15c8401`](https://testnet.opnscan.io/address/0x657B76E29a81F22C66155acCb1fAc7F0B15c8401) |
-| `SponsoredYieldSource` | [`0xFC96922990e7FC152A398029cee8f6F162532441`](https://testnet.opnscan.io/address/0xFC96922990e7FC152A398029cee8f6F162532441) |
-| `FinalityRandomness` | [`0x649636f3eE9F74dA7AE276ea7aa28c354Db0cEba`](https://testnet.opnscan.io/address/0x649636f3eE9F74dA7AE276ea7aa28c354Db0cEba) |
-
-Proof that `DrawPool` is not just deployed but already active on-chain:
-
-- `faucet()` on `MockUSDC`: [`0xdc332366e04461d5f88b2b92bd3d194e5ba1c940f07549498d9de8eb3f2a02df`](https://testnet.opnscan.io/tx/0xdc332366e04461d5f88b2b92bd3d194e5ba1c940f07549498d9de8eb3f2a02df)
-- `approve()` for `DrawPool`: [`0x9a1aa48c251199243d4e540f846163de0849f8a6644af35894de9951f7107b40`](https://testnet.opnscan.io/tx/0x9a1aa48c251199243d4e540f846163de0849f8a6644af35894de9951f7107b40)
-- First live `deposit(100 tUSDC)` into `DrawPool`: [`0xafe07bd948046ec8fedaf16b19ca8765500df985729c2f68c4f2dbd1f07b98d9`](https://testnet.opnscan.io/tx/0xafe07bd948046ec8fedaf16b19ca8765500df985729c2f68c4f2dbd1f07b98d9)
-
-Current live state after bootstrapping:
-
-- `DrawPool.totalDeposited() = 100.0 tUSDC`
-- `DrawPool.balanceOf(deployer) = 100.0 tUSDC`
-- `frontend/config.js` is already wired to this deployment
 
 ---
 
