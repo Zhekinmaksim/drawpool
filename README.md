@@ -1,5 +1,25 @@
 # DrawPool
 
+## Demo
+
+- Live app: [drawpool.xyz](https://drawpool.xyz)
+- Self-contained preview artifact: [`drawpool-preview.html`](./drawpool-preview.html)
+
+## Contracts
+
+| Contract | Address |
+| --- | --- |
+| `DrawPool` | [`0x70FE611Eded4e930f361e298C1B222E12088c573`](https://testnet.opnscan.io/address/0x70FE611Eded4e930f361e298C1B222E12088c573) |
+| `MockUSDC` | [`0x657B76E29a81F22C66155acCb1fAc7F0B15c8401`](https://testnet.opnscan.io/address/0x657B76E29a81F22C66155acCb1fAc7F0B15c8401) |
+| `SponsoredYieldSource` | [`0xFC96922990e7FC152A398029cee8f6F162532441`](https://testnet.opnscan.io/address/0xFC96922990e7FC152A398029cee8f6F162532441) |
+| `FinalityRandomness` | [`0x649636f3eE9F74dA7AE276ea7aa28c354Db0cEba`](https://testnet.opnscan.io/address/0x649636f3eE9F74dA7AE276ea7aa28c354Db0cEba) |
+
+## How to verify
+
+1. Open [`DrawPool` on OPN Scan](https://testnet.opnscan.io/address/0x70FE611Eded4e930f361e298C1B222E12088c573).
+2. Confirm the contract has live activity, including the first `deposit(100 tUSDC)` transaction: [`0xafe07bd948046ec8fedaf16b19ca8765500df985729c2f68c4f2dbd1f07b98d9`](https://testnet.opnscan.io/tx/0xafe07bd948046ec8fedaf16b19ca8765500df985729c2f68c4f2dbd1f07b98d9).
+3. Compare the on-chain addresses with [`frontend/config.js`](./frontend/config.js) and [`contracts/deployment.json`](./contracts/deployment.json).
+
 **No-loss prize savings on OPN Chain.** Deposit a stablecoin, keep every cent of
 your principal, and the entire pool's yield is awarded to one depositor each draw,
 with odds proportional to your balance. The prize auto-compounds into the winner's
