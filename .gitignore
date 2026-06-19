@@ -10,3 +10,4 @@ contracts/artifacts/
 
 .env
 contracts/.env
+.vercel
