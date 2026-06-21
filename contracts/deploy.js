@@ -64,7 +64,7 @@ async function main() {
     network: "opn-testnet",
     chainId: CHAIN_ID,
     rpc: RPC,
-    explorer: "https://testnet.opnscan.io",
+    explorer: "https://testnet.iopn.tech",
     drawInterval: DRAW_INTERVAL,
     deployedAt: new Date().toISOString(),
     contracts: {
@@ -91,7 +91,7 @@ async function main() {
     `window.DRAWPOOL_ABI = ${JSON.stringify(frontendAbi, null, 2)};\n`
   );
   console.log("\nDone. Wrote deployment.json, frontend/config.js, and frontend/abi.js");
-  console.log("Verify the deploy tx on https://testnet.opnscan.io for your Verified Builder badge.");
+  console.log("Verify the deploy tx on https://testnet.iopn.tech for your Verified Builder badge.");
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });

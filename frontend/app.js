@@ -73,7 +73,7 @@ function parseChainError(err, context = {}) {
 }
 
 function bindLiveContracts() {
-  const explorer = (cfg && cfg.explorer) || "https://testnet.opnscan.io";
+  const explorer = (cfg && cfg.explorer) || "https://testnet.iopn.tech";
   const rows = [
     ["contractDrawPool", "DrawPool"],
     ["contractMockUSDC", "MockUSDC"],
@@ -728,7 +728,7 @@ async function ensureNetwork() {
       await window.ethereum.request({
         method: "wallet_addEthereumChain", params: [{
           chainId: want, chainName: "OPN Testnet", nativeCurrency: { name: "OPN", symbol: "OPN", decimals: 18 },
-          rpcUrls: [(cfg && cfg.rpc) || "https://testnet-rpc.iopn.tech"], blockExplorerUrls: ["https://testnet.opnscan.io"]
+          rpcUrls: [(cfg && cfg.rpc) || "https://testnet-rpc.iopn.tech"], blockExplorerUrls: ["https://testnet.iopn.tech"]
         }]
       });
     } else throw e;

@@ -4,6 +4,9 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>DrawPool — no-loss savings pool on OPN Chain</title>
+<meta name="theme-color" content="#08080c" />
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2308080c'/%3E%3Cg transform='translate(32 33)'%3E%3Cpath d='M0-22L-15 6A15 16 0 0 0 0 17Z' fill='%235B34D6'/%3E%3Cpath d='M0-22L15 6A15 16 0 0 1 0 17Z' fill='%237C5CFF'/%3E%3Cpath d='M0-22L-6 4L0 17L6 4Z' fill='%23A78BFA'/%3E%3Cpath d='M-15 6L0 17L-2 31Z' fill='%237C5CFF'/%3E%3Cpath d='M15 6L0 17L2 31Z' fill='%235B34D6'/%3E%3Cpath d='M-6 4L0-22L6 4Z' fill='%23F5CF6A' opacity='.88'/%3E%3C/g%3E%3C/svg%3E" />
+<link rel="shortcut icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2308080c'/%3E%3Cg transform='translate(32 33)'%3E%3Cpath d='M0-22L-15 6A15 16 0 0 0 0 17Z' fill='%235B34D6'/%3E%3Cpath d='M0-22L15 6A15 16 0 0 1 0 17Z' fill='%237C5CFF'/%3E%3Cpath d='M0-22L-6 4L0 17L6 4Z' fill='%23A78BFA'/%3E%3Cpath d='M-15 6L0 17L-2 31Z' fill='%237C5CFF'/%3E%3Cpath d='M15 6L0 17L2 31Z' fill='%235B34D6'/%3E%3Cpath d='M-6 4L0-22L6 4Z' fill='%23F5CF6A' opacity='.88'/%3E%3C/g%3E%3C/svg%3E" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
@@ -425,7 +428,7 @@ footer{margin-top:36px;padding-top:18px;border-top:1px solid var(--line);display
         </div>
         <div class="fi">
           <div class="ft"><span class="ic"></span>Verify on-chain</div>
-          <div class="fd">See the committed block, final hash, and winner outcome on OPN Scan. <a id="fairLink" href="https://testnet.opnscan.io" target="_blank">Verify →</a></div>
+          <div class="fd">See the committed block, final hash, and winner outcome on the OPN explorer. <a id="fairLink" href="https://testnet.iopn.tech" target="_blank">Verify →</a></div>
         </div>
       </div>
     </div>
@@ -467,22 +470,22 @@ footer{margin-top:36px;padding-top:18px;border-top:1px solid var(--line);display
     <div class="judge-card contracts-card">
       <div class="judge-head">
         <span class="lbl">Live contracts</span>
-        <a id="allContractsLink" href="https://testnet.opnscan.io" class="lbl judge-link">OPN Scan →</a>
+        <a id="allContractsLink" href="https://testnet.iopn.tech" class="lbl judge-link">OPN Explorer →</a>
       </div>
       <div class="contract-list">
-        <a class="contract-row" id="contractDrawPool" href="https://testnet.opnscan.io">
+        <a class="contract-row" id="contractDrawPool" href="https://testnet.iopn.tech">
           <span class="ck">DrawPool</span>
           <span class="cv">—</span>
         </a>
-        <a class="contract-row" id="contractMockUSDC" href="https://testnet.opnscan.io">
+        <a class="contract-row" id="contractMockUSDC" href="https://testnet.iopn.tech">
           <span class="ck">MockUSDC</span>
           <span class="cv">—</span>
         </a>
-        <a class="contract-row" id="contractYield" href="https://testnet.opnscan.io">
+        <a class="contract-row" id="contractYield" href="https://testnet.iopn.tech">
           <span class="ck">SponsoredYieldSource</span>
           <span class="cv">—</span>
         </a>
-        <a class="contract-row" id="contractRng" href="https://testnet.opnscan.io">
+        <a class="contract-row" id="contractRng" href="https://testnet.iopn.tech">
           <span class="ck">FinalityRandomness</span>
           <span class="cv">—</span>
         </a>
@@ -581,7 +584,7 @@ footer{margin-top:36px;padding-top:18px;border-top:1px solid var(--line);display
 
   <!-- winners -->
   <section class="winners">
-    <div class="wh"><span class="lbl">Recent draws</span><a id="explorerLink" href="https://testnet.opnscan.io" target="_blank" class="lbl" style="color:var(--violet-br)">Open on explorer →</a></div>
+    <div class="wh"><span class="lbl">Recent draws</span><a id="explorerLink" href="https://testnet.iopn.tech" target="_blank" class="lbl" style="color:var(--violet-br)">Open on explorer →</a></div>
     <table>
       <thead><tr><th>Draw</th><th>Winner</th><th class="r">Yield won</th><th class="r">Final hash</th><th class="r">Date</th></tr></thead>
       <tbody id="wlist"></tbody>
@@ -602,7 +605,7 @@ window.DRAWPOOL_CONFIG = {
   "network": "opn-testnet",
   "chainId": 984,
   "rpc": "https://testnet-rpc.iopn.tech",
-  "explorer": "https://testnet.opnscan.io",
+  "explorer": "https://testnet.iopn.tech",
   "drawInterval": 86400,
   "deployedAt": "2026-06-19T16:17:57.976Z",
   "contracts": {
@@ -2177,7 +2180,7 @@ function parseChainError(err, context = {}) {
 }
 
 function bindLiveContracts() {
-  const explorer = (cfg && cfg.explorer) || "https://testnet.opnscan.io";
+  const explorer = (cfg && cfg.explorer) || "https://testnet.iopn.tech";
   const rows = [
     ["contractDrawPool", "DrawPool"],
     ["contractMockUSDC", "MockUSDC"],
@@ -2832,7 +2835,7 @@ async function ensureNetwork() {
       await window.ethereum.request({
         method: "wallet_addEthereumChain", params: [{
           chainId: want, chainName: "OPN Testnet", nativeCurrency: { name: "OPN", symbol: "OPN", decimals: 18 },
-          rpcUrls: [(cfg && cfg.rpc) || "https://testnet-rpc.iopn.tech"], blockExplorerUrls: ["https://testnet.opnscan.io"]
+          rpcUrls: [(cfg && cfg.rpc) || "https://testnet-rpc.iopn.tech"], blockExplorerUrls: ["https://testnet.iopn.tech"]
         }]
       });
     } else throw e;

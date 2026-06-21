@@ -2,7 +2,7 @@
   "network": "opn-testnet",
   "chainId": 984,
   "rpc": "https://testnet-rpc.iopn.tech",
-  "explorer": "https://testnet.opnscan.io",
+  "explorer": "https://testnet.iopn.tech",
   "drawInterval": 86400,
   "deployedAt": "2026-06-19T16:17:57.976Z",
   "contracts": {
