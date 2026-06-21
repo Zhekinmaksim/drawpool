@@ -14,15 +14,15 @@
 
 | Contract | Address |
 | --- | --- |
-| `DrawPool` | [`0x70FE611Eded4e930f361e298C1B222E12088c573`](https://testnet.iopn.tech/address/0x70FE611Eded4e930f361e298C1B222E12088c573) |
-| `MockUSDC` | [`0x657B76E29a81F22C66155acCb1fAc7F0B15c8401`](https://testnet.iopn.tech/address/0x657B76E29a81F22C66155acCb1fAc7F0B15c8401) |
-| `SponsoredYieldSource` | [`0xFC96922990e7FC152A398029cee8f6F162532441`](https://testnet.iopn.tech/address/0xFC96922990e7FC152A398029cee8f6F162532441) |
-| `FinalityRandomness` | [`0x649636f3eE9F74dA7AE276ea7aa28c354Db0cEba`](https://testnet.iopn.tech/address/0x649636f3eE9F74dA7AE276ea7aa28c354Db0cEba) |
+| `DrawPool` | [`0xcC893d0e240b7df45DA285334716feEE4BfBE7Fd`](https://testnet.iopn.tech/address/0xcC893d0e240b7df45DA285334716feEE4BfBE7Fd) |
+| `MockUSDC` | [`0x663f3dccC96f5f9bf046736d45875Af6CAB4ceA5`](https://testnet.iopn.tech/address/0x663f3dccC96f5f9bf046736d45875Af6CAB4ceA5) |
+| `SponsoredYieldSource` | [`0x92EE9BfD264b81Aad6C442c895d5B6D5c0E863b3`](https://testnet.iopn.tech/address/0x92EE9BfD264b81Aad6C442c895d5B6D5c0E863b3) |
+| `FinalityRandomness` | [`0xfCBb34Fc95D6f7021c73E8e64CB517D1b81e7EDE`](https://testnet.iopn.tech/address/0xfCBb34Fc95D6f7021c73E8e64CB517D1b81e7EDE) |
 
 ## How to verify
 
-1. Open [`DrawPool` on the OPN explorer](https://testnet.iopn.tech/address/0x70FE611Eded4e930f361e298C1B222E12088c573).
-2. Confirm the contract has live activity, including the first `deposit(100 tUSDC)` transaction: [`0xafe07bd948046ec8fedaf16b19ca8765500df985729c2f68c4f2dbd1f07b98d9`](https://testnet.iopn.tech/tx/0xafe07bd948046ec8fedaf16b19ca8765500df985729c2f68c4f2dbd1f07b98d9).
+1. Open [`DrawPool` on the OPN explorer](https://testnet.iopn.tech/address/0xcC893d0e240b7df45DA285334716feEE4BfBE7Fd).
+2. Confirm the contract has live activity, including the first `deposit(100 tUSDC)` transaction: [`0xfdbee30bfdc1d2f28aecf60e43bb0c69d266b3cea17b0733f782a8d6899e17ff`](https://testnet.iopn.tech/tx/0xfdbee30bfdc1d2f28aecf60e43bb0c69d266b3cea17b0733f782a8d6899e17ff).
 3. Compare the on-chain addresses with [`frontend/config.js`](./frontend/config.js) and [`contracts/deployment.json`](./contracts/deployment.json).
 
 ## How it works in 3 steps
