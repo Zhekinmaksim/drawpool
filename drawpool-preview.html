@@ -2132,6 +2132,50 @@ function toast(m) {
   clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("show"), 4000);
 }
 
+function humanEta(seconds) {
+  if (seconds <= 0) return "now";
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  return [h, m, s].map((v) => String(v).padStart(2, "0")).join(":");
+}
+
+function parseChainError(err, context = {}) {
+  const candidates = [
+    err?.data,
+    err?.info?.error?.data,
+    err?.error?.data,
+    err?.receipt?.revertReason,
+  ].filter(Boolean);
+  for (const raw of candidates) {
+    try {
+      const parsed = pool?.interface?.parseError?.(raw);
+      if (!parsed) continue;
+      switch (parsed.name) {
+        case "TooEarly":
+          return context.secondsUntilDraw > 0
+            ? `Too early, next draw opens in ${humanEta(context.secondsUntilDraw)}`
+            : "Too early";
+        case "NothingDeposited":
+          return "No deposits in the pool yet";
+        case "DrawAlreadyActive":
+          return "A draw is already active";
+        case "RandomnessNotReady":
+          return "Committed block not finalized yet";
+        case "NoActiveDraw":
+          return "No active draw to settle";
+        case "NoPrizeYet":
+          return "No yield prize available yet";
+        case "PoolLocked":
+          return "Pool is locked during an active draw";
+        default:
+          return parsed.name;
+      }
+    } catch {}
+  }
+  return (err?.shortMessage || err?.message || "Transaction failed").slice(0, 120);
+}
+
 function bindLiveContracts() {
   const explorer = (cfg && cfg.explorer) || "https://testnet.opnscan.io";
   const rows = [
@@ -2819,10 +2863,10 @@ async function connect() {
 }
 async function refresh() {
   if (!pool) return;
-  const [total, parts, drawCount, prize, bal, odds, wbal, nextAt, active, hLen] = await Promise.all([
+  const [total, parts, drawCount, prize, bal, odds, wbal, nextAt, active, hLen, latestBlock] = await Promise.all([
     pool.totalDeposited(), pool.participantCount(), pool.drawCount(), pool.currentPrize(),
     pool.balanceOf(account), pool.oddsBps(account), usdc.balanceOf(account), pool.nextDrawAt(),
-    pool.drawActive(), pool.historyLength()]);
+    pool.drawActive(), pool.historyLength(), provider.getBlock("latest")]);
   $("mTotal").textContent = fmt(total); $("mPart").textContent = parts.toString(); $("mDraws").textContent = drawCount.toString();
   setPrize(Number(ethers.formatUnits(prize, DEC)));
   $("uBal").textContent = fmt(bal) + " tUSDC";
@@ -2833,17 +2877,24 @@ async function refresh() {
   renderDonut([{ name: "You", bal: Number(ethers.formatUnits(bal, DEC)), you: true },
     { name: "Rest of pool", bal: Math.max(0, Number(ethers.formatUnits(total, DEC)) - Number(ethers.formatUnits(bal, DEC))) }]);
   lastDrawAt = Number(nextAt) - cad;
+  const chainNow = Number(latestBlock.timestamp);
+  const secondsUntilDraw = Math.max(0, Number(nextAt) - chainNow);
   if (!drawRunning) {
     $("st1").classList.toggle("on", active); $("st2").classList.toggle("on", active); $("st3").classList.toggle("on", !active);
-    $("startBtn").disabled = active; $("awardBtn").disabled = !active;
-    $("runHint").textContent = active ? "Draw committed. Once the block finalizes, anyone can settle the yield payout." : "Anyone can commit or settle a draw once the timer allows it.";
+    $("startBtn").disabled = active || secondsUntilDraw > 0;
+    $("awardBtn").disabled = !active;
+    $("runHint").textContent = active
+      ? "Draw committed. Once the block finalizes, anyone can settle the yield payout."
+      : secondsUntilDraw > 0
+        ? `Next draw opens in ${humanEta(secondsUntilDraw)}`
+        : "Anyone can commit or settle a draw once the timer allows it.";
   }
   const n = Number(hLen); let rows = [], paid = 0n;
   for (let i = n - 1; i >= 0 && i > n - 7; i--) { const d = await pool.history(i); paid += d.prize; rows.push({ id: d.id, w: shortAddr(d.winner), p: Number(ethers.formatUnits(d.prize, DEC)), t: new Date(Number(d.startedAt) * 1000).toLocaleDateString("en-GB", { day: "2-digit", month: "short" }), hash: (d.randomness && d.randomness !== 0n) ? ("0x" + d.randomness.toString(16).padStart(64, "0")) : "", fresh: i === n - 1 }); }
   if (n > 6) { for (let i = n - 7; i >= 0; i--) { const d = await pool.history(i); paid += d.prize; } }
   $("mPaid").textContent = fmt(paid);
   renderWinners(rows);
-  paintCountdown((lastDrawAt + cad) - Math.floor(Date.now() / 1000));
+  paintCountdown(secondsUntilDraw);
 }
 async function tx(p, msg, onOk) {
   try { toast(msg + "…"); const t = await p; await t.wait(); toast(msg + " ✓"); if (onOk) onOk(); await refresh(); }
@@ -2890,7 +2941,14 @@ $("startBtn").onclick = () => {
       await refresh();
     } catch (e) {
       console.error(e);
-      toast((e.shortMessage || e.message || "Transaction failed").slice(0, 90));
+      try {
+        const latestBlock = await provider.getBlock("latest");
+        const nextAt = await pool.nextDrawAt();
+        const secondsUntilDraw = Math.max(0, Number(nextAt) - Number(latestBlock.timestamp));
+        toast(parseChainError(e, { secondsUntilDraw }));
+      } catch {
+        toast(parseChainError(e));
+      }
     }
   })();
   commitPhase();
