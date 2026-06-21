@@ -10,6 +10,7 @@ const cfg = window.DRAWPOOL_CONFIG || null;
 const ABIS = window.DRAWPOOL_ABI || null;
 let provider, signer, account, usdc, pool, yieldSrc, rng;
 let cad = 86400, lastDrawAt = 0, liveMode = false, prizeShown = 0, yieldRate = 0;
+let dripTimer = null;
 
 const $ = (id) => document.getElementById(id);
 const fmt = (bn, d = 0) => Number(ethers.formatUnits(bn, DEC)).toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -299,8 +300,9 @@ function animatePrize(to) {
 }
 /* continuous micro-drip so the next yield prize is visibly alive */
 function startDrip() {
-  setInterval(() => {
-    if (document.hidden || drawRunning) return;
+  if (dripTimer) clearInterval(dripTimer);
+  dripTimer = setInterval(() => {
+    if (document.hidden || drawRunning || liveMode) return;
     setPrize(prizeShown + yieldRate);
     $("dripRate").textContent = "+" + yieldRate.toFixed(4);
   }, 1000);
@@ -398,7 +400,7 @@ function fillReelIdle(participants) {
   reel.classList.add("idle-spin");
 }
 
-function commitPhase() {
+function commitPhase(commitBlockOverride = null) {
   if (drawRunning) return;
   drawRunning = true;
   $("reelIdle").style.display = "none";
@@ -408,7 +410,7 @@ function commitPhase() {
   $("st1").classList.add("on", "done"); $("st2").classList.add("on"); $("st3").classList.remove("on");
   $("runHint").textContent = "Pool locked. Waiting for OPN to finalize the committed block.";
   // commit data
-  committedBlock = (liveMode ? 0 : 4820000 + (Math.random() * 9000 | 0));
+  committedBlock = commitBlockOverride ?? (liveMode ? 0 : 4820000 + (Math.random() * 9000 | 0));
   $("cBlock").textContent = "#" + committedBlock.toLocaleString("en-US");
   const status = $("cStatus"); status.className = "status live";
   $("cStatusT").textContent = "Waiting for block finality...";
@@ -420,17 +422,22 @@ function commitPhase() {
   toast("Draw committed, block " + committedBlock.toLocaleString("en-US"));
 }
 
-function awardPhase(participants) {
+function awardPhase(participants, forcedWinnerName = null, forcedHash = null) {
   if (!drawRunning) { toast("Commit the draw first"); return; }
   // pick weighted winner (honest: odds ∝ balance)
-  const total = participants.reduce((s, p) => s + p.bal, 0);
-  let r = Math.random() * total, idx = 0;
-  for (let i = 0; i < participants.length; i++) { r -= participants[i].bal; if (r <= 0) { idx = i; break; } }
-  const winner = participants[idx];
+  let winner;
+  if (forcedWinnerName) {
+    winner = participants.find((p) => p.name === forcedWinnerName) || { name: forcedWinnerName, bal: 0 };
+  } else {
+    const total = participants.reduce((s, p) => s + p.bal, 0);
+    let r = Math.random() * total, idx = 0;
+    for (let i = 0; i < participants.length; i++) { r -= participants[i].bal; if (r <= 0) { idx = i; break; } }
+    winner = participants[idx];
+  }
 
   // freeze the hash — block is final, hash can't be rewritten
   clearInterval(hashScrambler);
-  const finalHash = randHash();
+  const finalHash = forcedHash || randHash();
   $("cHash").textContent = finalHash;
   $("cHash").classList.add("locked");
   $("cStatusT").textContent = "Block finalized, outcome locked";
@@ -481,6 +488,17 @@ function onDrawSettled(winner, hash) {
     $("startBtn").disabled = false; $("awardBtn").disabled = true;
     $("runHint").textContent = "Anyone can commit or settle a draw once the timer allows it.";
   }, 5200);
+}
+
+async function loadLiveParticipantsForReel() {
+  const n = Number(await pool.participantCount());
+  const parts = [];
+  for (let i = 0; i < n; i++) {
+    const addr = await pool.participantAt(i);
+    const bal = await pool.balanceOf(addr);
+    parts.push({ name: shortAddr(addr), bal: Number(ethers.formatUnits(bal, DEC)) });
+  }
+  return parts.sort((a, b) => b.bal - a.bal);
 }
 
 /* ---------------- confetti ---------------- */
@@ -700,9 +718,11 @@ async function refresh() {
   renderDonut([{ name: "You", bal: Number(ethers.formatUnits(bal, DEC)), you: true },
     { name: "Rest of pool", bal: Math.max(0, Number(ethers.formatUnits(total, DEC)) - Number(ethers.formatUnits(bal, DEC))) }]);
   lastDrawAt = Number(nextAt) - cad;
-  $("st1").classList.toggle("on", active); $("st2").classList.toggle("on", active); $("st3").classList.toggle("on", !active);
-  $("startBtn").disabled = active; $("awardBtn").disabled = !active;
-  $("runHint").textContent = active ? "Draw committed. Once the block finalizes, anyone can settle the yield payout." : "Anyone can commit or settle a draw once the timer allows it.";
+  if (!drawRunning) {
+    $("st1").classList.toggle("on", active); $("st2").classList.toggle("on", active); $("st3").classList.toggle("on", !active);
+    $("startBtn").disabled = active; $("awardBtn").disabled = !active;
+    $("runHint").textContent = active ? "Draw committed. Once the block finalizes, anyone can settle the yield payout." : "Anyone can commit or settle a draw once the timer allows it.";
+  }
   const n = Number(hLen); let rows = [], paid = 0n;
   for (let i = n - 1; i >= 0 && i > n - 7; i--) { const d = await pool.history(i); paid += d.prize; rows.push({ id: d.id, w: shortAddr(d.winner), p: Number(ethers.formatUnits(d.prize, DEC)), t: new Date(Number(d.startedAt) * 1000).toLocaleDateString("en-GB", { day: "2-digit", month: "short" }), hash: (d.randomness && d.randomness !== 0n) ? ("0x" + d.randomness.toString(16).padStart(64, "0")) : "", fresh: i === n - 1 }); }
   if (n > 6) { for (let i = n - 7; i >= 0; i--) { const d = await pool.history(i); paid += d.prize; } }
@@ -743,11 +763,42 @@ $("depositBtn").onclick = async () => {
 $("withdrawBtn").onclick = () => { if (!liveMode) { toast("Demo mode, connect a wallet to withdraw."); return; } const a = parseAmt(); if (!a) return; tx(pool.withdraw(a), "Withdrawing", () => { $("amt").value = ""; }); };
 
 $("startBtn").onclick = () => {
-  if (liveMode) return tx(pool.startDraw(), "Committing draw");
+  if (liveMode) return (async () => {
+    try {
+      toast("Committing draw…");
+      const t = await pool.startDraw();
+      await t.wait();
+      const draw = await pool.currentDraw();
+      const commitBlock = await rng.commitBlockOf(cfg.contracts.DrawPool, draw.id);
+      commitPhase(Number(commitBlock));
+      toast("Committing draw ✓");
+      await refresh();
+    } catch (e) {
+      console.error(e);
+      toast((e.shortMessage || e.message || "Transaction failed").slice(0, 90));
+    }
+  })();
   commitPhase();
 };
 $("awardBtn").onclick = () => {
-  if (liveMode) return tx(pool.award(), "Settling draw", () => confetti());
+  if (liveMode) return (async () => {
+    try {
+      toast("Settling draw…");
+      const t = await pool.award();
+      await t.wait();
+      const hLen = await pool.historyLength();
+      const last = await pool.history(hLen - 1n);
+      const participants = await loadLiveParticipantsForReel();
+      const winnerName = shortAddr(last.winner);
+      const finalHash = "0x" + last.randomness.toString(16).padStart(64, "0");
+      awardPhase(participants, winnerName, finalHash);
+      toast("Settling draw ✓");
+      await refresh();
+    } catch (e) {
+      console.error(e);
+      toast((e.shortMessage || e.message || "Transaction failed").slice(0, 90));
+    }
+  })();
   awardPhase([...demo.participants].sort((a, b) => b.bal - a.bal));
 };
 
