@@ -11,6 +11,9 @@ const ABIS = window.DRAWPOOL_ABI || null;
 let provider, signer, account, usdc, pool, yieldSrc, rng;
 let cad = 86400, lastDrawAt = 0, liveMode = false, prizeShown = 0, yieldRate = 0;
 let dripTimer = null;
+let demoCountdownTimer = null;
+let liveCountdownTimer = null;
+let prizeAnimFrame = null;
 
 const $ = (id) => document.getElementById(id);
 const fmt = (bn, d = 0) => Number(ethers.formatUnits(bn, DEC)).toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -290,12 +293,14 @@ function setPrize(v) {
   prizeShown = v;
 }
 function animatePrize(to) {
+  if (prizeAnimFrame) cancelAnimationFrame(prizeAnimFrame);
   if (document.hidden || document.documentElement.dataset.motion === "off") { setPrize(to); return; }
   const from = prizeShown, start = performance.now(), dur = 800;
   (function step(now) {
     const p = Math.min(1, (now - start) / dur), e = 1 - Math.pow(1 - p, 3);
     setPrize(from + (to - from) * e);
-    if (p < 1) requestAnimationFrame(step); else prizeShown = to;
+    if (p < 1) prizeAnimFrame = requestAnimationFrame(step);
+    else { prizeShown = to; prizeAnimFrame = null; }
   })(start);
 }
 /* continuous micro-drip so the next yield prize is visibly alive */
@@ -625,8 +630,9 @@ function renderDemo() {
 
   // live demo loops
   startDrip();
-  setInterval(() => {
-    if (drawRunning) return;
+  if (demoCountdownTimer) clearInterval(demoCountdownTimer);
+  demoCountdownTimer = setInterval(() => {
+    if (drawRunning || liveMode) return;
     if (demo.countdown > 0) demo.countdown--;
     paintCountdown(demo.countdown);
   }, 1000);
@@ -697,10 +703,15 @@ async function connect() {
   rng = new ethers.Contract(c.FinalityRandomness, ABIS.FinalityRandomness, signer);
   pool = new ethers.Contract(c.DrawPool, ABIS.DrawPool, signer);
   cad = Number(await pool.drawInterval()); liveMode = true;
+  if (dripTimer) { clearInterval(dripTimer); dripTimer = null; }
+  if (demoCountdownTimer) { clearInterval(demoCountdownTimer); demoCountdownTimer = null; }
+  if (prizeAnimFrame) { cancelAnimationFrame(prizeAnimFrame); prizeAnimFrame = null; }
   $("demoFlag").style.display = "none"; $("connect").textContent = shortAddr(account);
   $("addrLine").textContent = "DRAWPOOL " + c.DrawPool.toUpperCase();
   $("explorerLink").href = cfg.explorer + "/address/" + c.DrawPool;
-  await refresh(); setInterval(() => { if (liveMode) paintCountdown((lastDrawAt + cad) - Math.floor(Date.now() / 1000)); }, 1000);
+  await refresh();
+  if (liveCountdownTimer) clearInterval(liveCountdownTimer);
+  liveCountdownTimer = setInterval(() => { if (liveMode) paintCountdown((lastDrawAt + cad) - Math.floor(Date.now() / 1000)); }, 1000);
 }
 async function refresh() {
   if (!pool) return;
@@ -709,7 +720,7 @@ async function refresh() {
     pool.balanceOf(account), pool.oddsBps(account), usdc.balanceOf(account), pool.nextDrawAt(),
     pool.drawActive(), pool.historyLength()]);
   $("mTotal").textContent = fmt(total); $("mPart").textContent = parts.toString(); $("mDraws").textContent = drawCount.toString();
-  animatePrize(Number(ethers.formatUnits(prize, DEC)));
+  setPrize(Number(ethers.formatUnits(prize, DEC)));
   $("uBal").textContent = fmt(bal) + " tUSDC";
   const oddsPct = Number(odds) / 100; $("uOdds").textContent = oddsPct.toFixed(2) + "%";
   $("uWallet").textContent = fmt(wbal) + " tUSDC";
