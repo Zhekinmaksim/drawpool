@@ -2824,8 +2824,17 @@ function parseAmt() { const v = $("amt").value.trim(); if (!v || isNaN(v)) { toa
 $("connect").onclick = connect;
 const needWallet = () => toast("Connect your wallet first");
 $("heroDeposit").onclick = () => { if (!liveMode) { document.querySelector(".cols").scrollIntoView({ behavior: "smooth", block: "center" }); $("amt").focus(); return; } $("amt").focus(); };
-$("heroFaucet").onclick = () => liveMode ? tx(usdc.faucet(), "Claiming faucet") : toast("Demo mode, the faucet works once live contracts are wired.");
-$("faucetBtn").onclick = () => liveMode ? tx(usdc.faucet(), "Claiming faucet") : toast("Demo mode, the faucet works once live contracts are wired.");
+async function claimFaucetFlow() {
+  if (!cfg || !ABIS) { toast("Demo mode, the faucet works once live contracts are wired."); return; }
+  if (!liveMode) {
+    try { await connect(); }
+    catch (e) { console.error(e); toast((e.shortMessage || e.message || "Wallet connection failed").slice(0, 90)); return; }
+  }
+  if (!usdc) { toast("Wallet connection required."); return; }
+  return tx(usdc.faucet(), "Claiming faucet");
+}
+$("heroFaucet").onclick = claimFaucetFlow;
+$("faucetBtn").onclick = claimFaucetFlow;
 $("maxBtn").onclick = async () => { if (!liveMode) { $("amt").value = "6000"; return; } const b = await usdc.balanceOf(account); $("amt").value = ethers.formatUnits(b, DEC); };
 document.querySelectorAll(".preset button").forEach(b => b.onclick = () => { $("amt").value = b.dataset.v; });
 
