@@ -24,6 +24,25 @@ function toast(m) {
   clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("show"), 4000);
 }
 
+function bindLiveContracts() {
+  const explorer = (cfg && cfg.explorer) || "https://testnet.opnscan.io";
+  const rows = [
+    ["contractDrawPool", "DrawPool"],
+    ["contractMockUSDC", "MockUSDC"],
+    ["contractYield", "SponsoredYieldSource"],
+    ["contractRng", "FinalityRandomness"],
+  ];
+  const allLink = $("allContractsLink");
+  if (allLink) allLink.href = cfg?.contracts?.DrawPool ? `${explorer}/address/${cfg.contracts.DrawPool}` : explorer;
+  rows.forEach(([id, key]) => {
+    const row = $(id);
+    if (!row) return;
+    const address = cfg?.contracts?.[key];
+    row.href = address ? `${explorer}/address/${address}` : explorer;
+    row.querySelector(".cv").textContent = address || "deploy to populate";
+  });
+}
+
 /* ============================================================
    SOUND ENGINE — synthesized via Web Audio (no asset files).
    Signal flow:  voices → [dry + reverb send] → bus → limiter → out
@@ -724,6 +743,7 @@ $("awardBtn").onclick = () => {
 };
 
 /* ---------------- boot ---------------- */
+bindLiveContracts();
 renderDemo();
 window.addEventListener("load", () => setTimeout(bootFallbackTweaks, 1500), { once: true });
 if (window.ethereum && cfg && ABIS) { window.ethereum.on?.("accountsChanged", () => location.reload()); window.ethereum.on?.("chainChanged", () => location.reload()); }

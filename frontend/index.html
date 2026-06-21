@@ -131,6 +131,61 @@
     <div><div class="lbl">Draws settled</div><div class="v" id="mDraws">—</div></div>
   </section>
 
+  <section class="judges">
+    <div class="judge-card">
+      <div class="judge-head">
+        <span class="lbl">Why OPN</span>
+      </div>
+      <div class="judge-copy">
+        <h2>Why this only makes sense on OPN.</h2>
+        <p>DrawPool depends on finalized future-block hashes for fair randomness. On OPN, instant finality means the committed block hash cannot be reorged or re-rolled after the draw commits.</p>
+      </div>
+      <div class="judge-grid">
+        <div class="judge-item">
+          <span class="ji-k">Instant finality</span>
+          <p>Once the block lands, the winner source is fixed forever.</p>
+        </div>
+        <div class="judge-item">
+          <span class="ji-k">~1s blocks</span>
+          <p>The deposit lock between commit and settle stays short enough to feel natural.</p>
+        </div>
+        <div class="judge-item">
+          <span class="ji-k">OPN integration</span>
+          <p>This is not generic EVM glue. The randomness design is built around OPN's consensus guarantees.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="judge-card contracts-card">
+      <div class="judge-head">
+        <span class="lbl">Live contracts</span>
+        <a id="allContractsLink" href="https://testnet.opnscan.io" target="_blank" class="lbl judge-link">OPN Scan →</a>
+      </div>
+      <div class="contract-list">
+        <a class="contract-row" id="contractDrawPool" href="https://testnet.opnscan.io" target="_blank">
+          <span class="ck">DrawPool</span>
+          <span class="cv">—</span>
+        </a>
+        <a class="contract-row" id="contractMockUSDC" href="https://testnet.opnscan.io" target="_blank">
+          <span class="ck">MockUSDC</span>
+          <span class="cv">—</span>
+        </a>
+        <a class="contract-row" id="contractYield" href="https://testnet.opnscan.io" target="_blank">
+          <span class="ck">SponsoredYieldSource</span>
+          <span class="cv">—</span>
+        </a>
+        <a class="contract-row" id="contractRng" href="https://testnet.opnscan.io" target="_blank">
+          <span class="ck">FinalityRandomness</span>
+          <span class="cv">—</span>
+        </a>
+      </div>
+      <div class="judge-meta">
+        <span>Network: <b>OPN Testnet</b></span>
+        <span>Chain ID: <b>984</b></span>
+      </div>
+    </div>
+  </section>
+
   <!-- position + deposit -->
   <div class="cols">
     <div class="card">

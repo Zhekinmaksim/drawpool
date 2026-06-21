@@ -146,6 +146,27 @@ nav{display:flex;justify-content:space-between;align-items:center;height:68px;bo
 .strip .v{font-family:var(--mono);font-weight:500;font-size:22px;margin-top:9px;font-variant-numeric:tabular-nums}
 .strip .v.violet{color:var(--violet-br)} .strip .v.gold{color:var(--gold)} .strip .v.green{color:var(--green)}
 
+/* ---------- judge sections ---------- */
+.judges{display:grid;grid-template-columns:1.12fr .88fr;gap:16px;margin-top:16px}
+.judge-card{border:1px solid var(--line-2);background:var(--surface);border-radius:6px;padding:22px}
+.judge-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.judge-link{color:var(--violet-br)}
+.judge-copy h2{margin-top:10px;font-size:24px;line-height:1.08;letter-spacing:-.03em;max-width:17ch}
+.judge-copy p{margin-top:11px;max-width:58ch;font-size:13.5px;line-height:1.65;color:var(--text-2)}
+.judge-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:18px}
+.judge-item{padding:13px 14px;border:1px solid var(--line);border-radius:4px;background:linear-gradient(180deg,rgba(255,255,255,.012),rgba(124,92,255,.045))}
+.judge-item .ji-k{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--violet-br)}
+.judge-item p{margin-top:7px;font-size:12px;line-height:1.55;color:var(--dim)}
+.contracts-card{display:flex;flex-direction:column}
+.contract-list{display:flex;flex-direction:column;gap:0;margin-top:14px;border:1px solid var(--line);border-radius:4px;overflow:hidden;background:var(--bg-2)}
+.contract-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 14px;border-bottom:1px solid var(--line);transition:background .14s,border-color .14s}
+.contract-row:last-child{border-bottom:none}
+.contract-row:hover{background:rgba(124,92,255,.08)}
+.contract-row .ck{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-2)}
+.contract-row .cv{font-family:var(--mono);font-size:12px;color:var(--violet-br);text-align:right}
+.judge-meta{display:flex;justify-content:space-between;gap:10px;margin-top:14px;padding-top:14px;border-top:1px solid var(--line);font-family:var(--mono);font-size:10.5px;color:var(--dim)}
+.judge-meta b{color:var(--text);font-weight:500}
+
 /* ---------- two-col cards ---------- */
 .cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
 .card{border:1px solid var(--line-2);background:var(--surface);padding:24px;border-radius:6px}
@@ -283,6 +304,11 @@ footer{margin-top:36px;padding-top:18px;border-top:1px solid var(--line);display
   .how3{grid-template-columns:1fr}
   .strip{grid-template-columns:1fr 1fr}.strip>div:nth-child(2){border-right:none}
   .strip>div:nth-child(1),.strip>div:nth-child(2){border-bottom:1px solid var(--line)}
+  .judges{grid-template-columns:1fr}
+  .judge-grid{grid-template-columns:1fr}
+  .judge-meta{flex-direction:column}
+  .contract-row{flex-direction:column;align-items:flex-start}
+  .contract-row .cv{text-align:left;word-break:break-all}
   .cols{grid-template-columns:1fr}.msteps{grid-template-columns:1fr}.ms{border-right:none;border-bottom:1px solid var(--line)}
   .reel-wrap{grid-template-columns:1fr}
   .mhead{flex-direction:column;gap:12px;align-items:stretch}.mhead .run .btn{flex:1}
@@ -411,6 +437,61 @@ footer{margin-top:36px;padding-top:18px;border-top:1px solid var(--line);display
     <div><div class="lbl">Players</div><div class="v" id="mPart">—</div></div>
     <div><div class="lbl">Yield paid</div><div class="v gold" id="mPaid">—</div></div>
     <div><div class="lbl">Draws settled</div><div class="v" id="mDraws">—</div></div>
+  </section>
+
+  <section class="judges">
+    <div class="judge-card">
+      <div class="judge-head">
+        <span class="lbl">Why OPN</span>
+      </div>
+      <div class="judge-copy">
+        <h2>Why this only makes sense on OPN.</h2>
+        <p>DrawPool depends on finalized future-block hashes for fair randomness. On OPN, instant finality means the committed block hash cannot be reorged or re-rolled after the draw commits.</p>
+      </div>
+      <div class="judge-grid">
+        <div class="judge-item">
+          <span class="ji-k">Instant finality</span>
+          <p>Once the block lands, the winner source is fixed forever.</p>
+        </div>
+        <div class="judge-item">
+          <span class="ji-k">~1s blocks</span>
+          <p>The deposit lock between commit and settle stays short enough to feel natural.</p>
+        </div>
+        <div class="judge-item">
+          <span class="ji-k">OPN integration</span>
+          <p>This is not generic EVM glue. The randomness design is built around OPN's consensus guarantees.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="judge-card contracts-card">
+      <div class="judge-head">
+        <span class="lbl">Live contracts</span>
+        <a id="allContractsLink" href="https://testnet.opnscan.io" target="_blank" class="lbl judge-link">OPN Scan →</a>
+      </div>
+      <div class="contract-list">
+        <a class="contract-row" id="contractDrawPool" href="https://testnet.opnscan.io" target="_blank">
+          <span class="ck">DrawPool</span>
+          <span class="cv">—</span>
+        </a>
+        <a class="contract-row" id="contractMockUSDC" href="https://testnet.opnscan.io" target="_blank">
+          <span class="ck">MockUSDC</span>
+          <span class="cv">—</span>
+        </a>
+        <a class="contract-row" id="contractYield" href="https://testnet.opnscan.io" target="_blank">
+          <span class="ck">SponsoredYieldSource</span>
+          <span class="cv">—</span>
+        </a>
+        <a class="contract-row" id="contractRng" href="https://testnet.opnscan.io" target="_blank">
+          <span class="ck">FinalityRandomness</span>
+          <span class="cv">—</span>
+        </a>
+      </div>
+      <div class="judge-meta">
+        <span>Network: <b>OPN Testnet</b></span>
+        <span>Chain ID: <b>984</b></span>
+      </div>
+    </div>
   </section>
 
   <!-- position + deposit -->
@@ -2047,6 +2128,25 @@ function toast(m) {
   clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("show"), 4000);
 }
 
+function bindLiveContracts() {
+  const explorer = (cfg && cfg.explorer) || "https://testnet.opnscan.io";
+  const rows = [
+    ["contractDrawPool", "DrawPool"],
+    ["contractMockUSDC", "MockUSDC"],
+    ["contractYield", "SponsoredYieldSource"],
+    ["contractRng", "FinalityRandomness"],
+  ];
+  const allLink = $("allContractsLink");
+  if (allLink) allLink.href = cfg?.contracts?.DrawPool ? `${explorer}/address/${cfg.contracts.DrawPool}` : explorer;
+  rows.forEach(([id, key]) => {
+    const row = $(id);
+    if (!row) return;
+    const address = cfg?.contracts?.[key];
+    row.href = address ? `${explorer}/address/${address}` : explorer;
+    row.querySelector(".cv").textContent = address || "deploy to populate";
+  });
+}
+
 /* ============================================================
    SOUND ENGINE — synthesized via Web Audio (no asset files).
    Signal flow:  voices → [dry + reverb send] → bus → limiter → out
@@ -2747,6 +2847,7 @@ $("awardBtn").onclick = () => {
 };
 
 /* ---------------- boot ---------------- */
+bindLiveContracts();
 renderDemo();
 window.addEventListener("load", () => setTimeout(bootFallbackTweaks, 1500), { once: true });
 if (window.ethereum && cfg && ABIS) { window.ethereum.on?.("accountsChanged", () => location.reload()); window.ethereum.on?.("chainChanged", () => location.reload()); }
